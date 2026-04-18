@@ -1,0 +1,40 @@
+name: docscan_mobile
+description: "DocScan - 移动端文档扫描、AI抠图、公式识别应用"
+publish_to: 'none'
+version: 1.0.0+1
+
+environment:
+  sdk: ^3.8.1
+
+dependencies:
+  flutter:
+    sdk: flutter
+  cupertino_icons: ^1.0.8
+  camera: ^0.11.1
+  image: ^4.2.0
+  path: ^1.9.0
+  path_provider: ^2.1.5
+  onnxruntime: ^1.4.1
+  http: ^1.2.2
+  gal: ^2.3.2
+  image_picker: ^1.1.2
+  flutter_math_fork: ^0.7.4
+
+dependency_overrides:
+  # flutter_math_fork → flutter_svg 拉到 vector_graphics 1.1.21+，要求 Dart ^3.9 / Flutter 3.35+。
+  # 在 sdk ^3.8 下锁定到 Flutter 3.27 兼容版本。升级 Flutter 后可移除此段。
+  vector_graphics: 1.1.19
+  vector_graphics_codec: 1.1.13
+  vector_graphics_compiler: 1.1.19
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^5.0.0
+
+flutter:
+  uses-material-design: true
+  assets:
+    - assets/models/fastvit_sa24_h_e_bifpn_256_fp32.onnx
+    - assets/models/lcnet050_p_multi_decoder_l3_d64_256_fp32.onnx
+    - assets/models/latex/
