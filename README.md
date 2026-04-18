@@ -21,6 +21,7 @@ DocScan Mobile 是一款面向 **iOS / Android** 的 Flutter 应用，聚焦「�
 - [抠图服务配置](#抠图服务配置)
 - [模型与资源文件](#模型与资源文件)
 - [工程结构](#工程结构)
+- [产品规划](#产品规划)
 - [文档与路线图](#文档与路线图)
 - [贡献与安全](#贡献与安全)
 - [许可证](#许可证)
@@ -40,16 +41,34 @@ DocScan Mobile 是一款面向 **iOS / Android** 的 Flutter 应用，聚焦「�
 
 ## 功能一览
 
-### 已实现
+以下为底部拍摄模式与核心能力（顺序与 [`CameraCaptureMode`](lib/models/camera_capture_mode.dart) 一致）。**对勾**表示当前版本已落地，**空方框**表示占位或暂未开放。
 
-- **文档扫描**：相机预览、`ImageStream` 上的 ONNX 角点检测、叠加文档框、快门后透视裁剪与 **风格页**（`StylePage`）。
-- **AI 抠图**：拍照或相册 JPEG → 远程蒙版接口 → 端上合成 **带 Alpha 的 PNG**，结果页支持保存到相册（`gal`）。
-- **扫描电子签名**：独立拍照引导（白纸签名），抠图链路复用，输出透明背景签名图。
-- **公式识别**：端侧 **ONNX** 推理 + BPE `tokenizer.json`，输出 LaTeX 并可借助 `flutter_math_fork` 预览（需自备模型权重，见下文）。
+- [x] **扫描**：相机预览、`ImageStream` 上 ONNX 角点检测、文档框叠加、透视裁剪与 **风格页**（`StylePage`）。
+- [x] **AI 抠图**：拍照或相册 JPEG → 远程蒙版接口 → 端上合成带 Alpha 的 PNG，可保存相册（`gal`）。
+- [x] **扫描电子签名**：独立引导与快门流程，抠图链路复用，透明背景签名图。
+- [ ] **证件照**：占位。
+- [x] **公式识别**：端侧 ONNX + `tokenizer.json`，LaTeX 输出与公式预览（`flutter_math_fork`）；模型见下文。
+- [ ] **文字识别**：占位。
+- [ ] **翻译**：占位。
+- [ ] **物体识别**：占位。
+- [ ] **AI 擦除**：占位。
 
-### 规划中 / 占位
+对接细节见 [`docs/camera_modes_roadmap.md`](docs/camera_modes_roadmap.md)。
 
-底部模式条中的 **证件照、文字识别、翻译、物体识别、AI 擦除** 等当前为占位或「功能暂未开放」页，可在 [`CameraCaptureMode`](lib/models/camera_capture_mode.dart) 与 [`docs/camera_modes_roadmap.md`](docs/camera_modes_roadmap.md) 中查看对接建议。
+---
+
+## 产品规划
+
+面向「可商用的开源扫描体验」的后续方向（随版本迭代更新勾选状态）。
+
+- [x] 端侧文档角点 + 透视扫描主流程
+- [x] 可配置抠图服务（`MATTING_API_BASE` + 本地 `matting_local.env`）
+- [x] 端侧 LaTeX 公式识别（ONNX）
+- [ ] 多页扫描与列表管理
+- [ ] 导出 PDF / 多格式分享
+- [ ] 图像增强（去阴影、对比度曲线等）深化
+- [ ] 云端同步（可选、需自备合规后端）
+- [ ] 单元测试覆盖核心几何与 OCR 后处理
 
 ---
 
@@ -173,19 +192,19 @@ lib/
 ├── theme/                    # 设计 Token
 └── widgets/                  # 模式条、文档叠加层、反馈组件等
 docs/                         # 路线图、性能规划、优化报告等
-flutter_reference/            # 可选参考资源（按需使用，注意其中可能含独立前端工程）
+flutter_reference/            # 可选：Python 脚本、重复模型等参考资源（无前端单页依赖）
 ```
 
 ---
 
 ## 文档与路线图
 
-| 文档 | 内容 |
-|------|------|
-| [`docs/camera_modes_roadmap.md`](docs/camera_modes_roadmap.md) | 各拍摄模式状态与对接建议 |
-| [`docs/performance_stability_plan.md`](docs/performance_stability_plan.md) | 性能与稳定性规划 |
-| [`docs/optimization_report.md`](docs/optimization_report.md) | 优化项与优先级 |
-| [`docs/mode_integration_template.md`](docs/mode_integration_template.md) | 新模式接入模板思路 |
+仓库内设计文档（阅读进度可自行在 fork 中勾选）。
+
+- [x] [`docs/camera_modes_roadmap.md`](docs/camera_modes_roadmap.md) — 各拍摄模式状态与对接建议
+- [x] [`docs/performance_stability_plan.md`](docs/performance_stability_plan.md) — 性能与稳定性规划
+- [x] [`docs/optimization_report.md`](docs/optimization_report.md) — 优化项与优先级
+- [x] [`docs/mode_integration_template.md`](docs/mode_integration_template.md) — 新模式接入模板思路
 
 欢迎通过 **Issue** 讨论优先级，通过 **PR** 提交改进（建议先开小范围变更便于评审）。
 
