@@ -11,6 +11,8 @@ extension _CameraCaptureOrchestrator on _CameraScanPageState {
       CameraCaptureMode.textRecognition: _captureVisionTextRecognition,
       CameraCaptureMode.translate: _captureVisionTranslate,
       CameraCaptureMode.objectRecognition: _captureVisionObjectRecognition,
+      CameraCaptureMode.idPhoto: _captureIdPhoto,
+      CameraCaptureMode.aiErase: _captureAiErase,
     };
   }
 

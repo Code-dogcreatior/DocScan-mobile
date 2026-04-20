@@ -3,6 +3,7 @@ class AppEnv {
   AppEnv._();
 
   static const String mattingApiBase = String.fromEnvironment('MATTING_API_BASE');
+  static const String inpaintApiBase = String.fromEnvironment('INPAINT_API_BASE');
 
   /// OpenRouter API Key（`sk-or-...` 或兼容前缀）；为空则公式仅走端侧 ONNX。
   static const String openRouterApiKey = String.fromEnvironment('OPENROUTER_API_KEY');

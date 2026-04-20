@@ -2,10 +2,10 @@
 
 <p align="center">
   <strong>移动端智能文档扫描</strong><br/>
-  端侧 ONNX 推理 · 透视矫正 · 可选远程抠图 · 公式识别（联网优先云端 / 离线 ONNX）
+  端侧 ONNX 推理 · 透视矫正 · 可选远程抠图 · 公式识别（联网优先云端 / 离线 ONNX）· 文字识别/翻译/物体识别
 </p>
 
-DocScan Mobile 是一款面向 **iOS / Android** 的 Flutter 应用，聚焦「相机即扫」体验：实时文档框、透视拉正、扫描风格增强，并集成 **AI 抠图**（可对接自建 HTTP 服务）与 **LaTeX 公式识别**（可选 [OpenRouter](https://openrouter.ai/) 视觉模型，离线回退 ONNX）。项目以 **可审计的开源实现** 与 **可替换的后端** 为设计目标，适合作为商业产品原型、二次开发底座或学习相机 + ONNX 流水线的参考实现。
+DocScan Mobile 是一款面向 **iOS / Android** 的 Flutter 应用，聚焦「相机即扫」体验：实时文档框、透视拉正、扫描风格增强，并集成 **AI 抠图**（可对接自建 HTTP 服务）、**LaTeX 公式识别**（可选 [OpenRouter](https://openrouter.ai/) 视觉模型，离线回退 ONNX）与 **文字识别 / 翻译 / 物体识别**（Responses + `json_schema` 结构化输出）。项目以 **可审计的开源实现** 与 **可替换的后端** 为设计目标，适合作为商业产品原型、二次开发底座或学习相机 + ONNX 流水线的参考实现。
 
 > 愿景：在合规与隐私可控的前提下，持续对齐主流扫描类 App 的核心能力（清晰度、边缘稳定、导出与分享），**不**复制任何第三方品牌或闭源实现。
 
@@ -32,7 +32,7 @@ DocScan Mobile 是一款面向 **iOS / Android** 的 Flutter 应用，聚焦「�
 
 | 维度 | 说明 |
 |------|------|
-| **隐私友好** | 文档角点、透视裁剪可在 **设备端** 完成；若配置 `OPENROUTER_API_KEY` 且本机已连接网络，公式识别与「解题/说明」会请求 OpenRouter（图像与 LaTeX 会出境）；抠图仅在使用该功能时访问你配置的 `MATTING_API_BASE`。 |
+| **隐私友好** | 文档角点、透视裁剪可在 **设备端** 完成；若配置 `OPENROUTER_API_KEY` 且本机已连接网络，公式识别/解题说明、文字识别、翻译、物体识别会请求 OpenRouter（图像与文本可能出境）；抠图仅在使用该功能时访问你配置的 `MATTING_API_BASE`。 |
 | **可配置后端** | 抠图根地址通过编译期变量注入，**已跟踪源码中不包含默认第三方域名**，便于公开仓库托管与私有化部署。 |
 | **可演进架构** | 拍摄模式以枚举驱动，扫描 / 抠图 / 签名 / 公式等分支清晰，便于按产品节奏扩展「多页」「PDF」「云同步」等能力。 |
 | **工程化文档** | `docs/` 下提供模式路线图、性能与稳定性规划、优化报告等，降低接手与协作成本。 |
@@ -46,12 +46,12 @@ DocScan Mobile 是一款面向 **iOS / Android** 的 Flutter 应用，聚焦「�
 - [x] **扫描**：相机预览、`ImageStream` 上 ONNX 角点检测、文档框叠加、透视裁剪与 **风格页**（`StylePage`）。
 - [x] **AI 抠图**：拍照或相册 JPEG → 远程蒙版接口 → 端上合成带 Alpha 的 PNG，可保存相册（`gal`）。
 - [x] **扫描电子签名**：独立引导与快门流程，抠图链路复用，透明背景签名图。
-- [ ] **证件照**：占位。
-- [x] **公式识别**：联网且已配置 OpenRouter 时优先 **视觉 LaTeX**；否则端侧 ONNX + `tokenizer.json`；结果页支持 **智能解题 / 公式说明**（`json_schema` 结构化输出 + `flutter_math_fork` 渲染）。详见下文「统一环境变量」。
-- [ ] **文字识别**：占位。
-- [ ] **翻译**：占位。
-- [ ] **物体识别**：占位。
-- [ ] **AI 擦除**：占位。
+- [x] **证件照**：复用抠图前景，支持白/蓝/红背景、常用尺寸与自定义尺寸、6寸排版导出与分享。
+- [x] **公式识别**：联网且已配置 OpenRouter 时优先 **视觉 LaTeX**；否则端侧 ONNX + `tokenizer.json`；结果页支持 **智能解题 / 公式说明**（`json_schema` 结构化输出 + `flutter_math_fork` 渲染），并可展开查看每步「所用依据（公理/定理/法则）」。
+- [x] **文字识别**：走 Responses 视觉接口，结构化输出仅 `text` 字段，返回画面主体文字。
+- [x] **翻译**：走 Responses 视觉接口，结构化输出 `translation_zh`（简体中文译文）。
+- [x] **物体识别**：走 Responses 视觉接口，结构化输出主体名称与一句简述（`name_zh` + `brief_zh`）。
+- [x] **AI 擦除**：画笔蒙版标记 + 缩放/平移编辑，提交 `image + mask` 到 inpaint 接口，返回修复图后可保存/分享。
 
 对接细节见 [`docs/camera_modes_roadmap.md`](docs/camera_modes_roadmap.md)。
 
@@ -63,9 +63,10 @@ DocScan Mobile 是一款面向 **iOS / Android** 的 Flutter 应用，聚焦「�
 
 - [x] 端侧文档角点 + 透视扫描主流程
 - [x] 可配置抠图与 OpenRouter（`env/app.env`：`MATTING_API_BASE`、`OPENROUTER_API_KEY` 等）
-- [x] LaTeX 公式识别（云端优先 + ONNX 回退）与结果页解题/说明
-- [ ] 多页扫描与列表管理
-- [ ] 导出 PDF / 多格式分享
+- [x] LaTeX 公式识别（云端优先 + ONNX 回退）与结果页解题/说明（支持展开「所用依据」）
+- [x] 文字识别 / 翻译 / 物体识别（独立模型环境变量，可单独切换模型）
+- [x] 多页扫描与列表管理（从扫描结果进入多页文档页）
+- [x] 导出 PDF / 分享
 - [ ] 图像增强（去阴影、对比度曲线等）深化
 - [ ] 云端同步（可选、需自备合规后端）
 - [ ] 单元测试覆盖核心几何与 OCR 后处理
@@ -80,6 +81,7 @@ DocScan Mobile 是一款面向 **iOS / Android** 的 Flutter 应用，聚焦「�
 - **推理**：`onnxruntime`（角点检测、公式 Encoder/Decoder 等）
 - **网络**：`http`（抠图 multipart、兼容 OpenAI **Responses** `…/v1/responses` 的 LLM 网关）、`connectivity_plus`（本机网络链路）
 - **相册**：`gal`、`image_picker`
+- **导出与分享**：`pdf`、`share_plus`
 
 ---
 
@@ -101,13 +103,15 @@ cd <仓库根目录>
 flutter pub get
 ```
 
-**推荐**：复制 [`env/app.example.env`](env/app.example.env) 为 **`env/app.env`**（已在 `.gitignore`），填写抠图根地址与（可选）OpenRouter Key，然后：
+**推荐**：复制 [`env/app.example.env`](env/app.example.env) 为 **`env/app.env`**（已在 `.gitignore`），填写抠图/擦除根地址与（可选）OpenRouter Key，然后：
 
 ```bash
 flutter run --dart-define-from-file=env/app.env
 ```
 
 **公式识别**：未配置 `OPENROUTER_API_KEY` 或设备未联网时，使用 `assets/models/latex/` 下 ONNX + `tokenizer.json`（本仓库已跟踪）。配置 Key 且本机已连接网络时，识别优先走 LLM 网关（默认模型 `google/gemini-3.1-flash-lite-preview`，可在 `env/app.env` 中改 `OPENROUTER_MODEL`）。
+
+**文字识别 / 翻译 / 物体识别**：均走 Responses 视觉接口，模型可分别通过 `OPENROUTER_MODEL_TEXT_OCR`、`OPENROUTER_MODEL_TRANSLATE`、`OPENROUTER_MODEL_OBJECT` 配置；留空时自动回退 `OPENROUTER_MODEL`。
 
 **单次传入**（不写文件时）：
 
@@ -154,13 +158,18 @@ flutter build ios --dart-define-from-file=env/app.env
 
    ```env
    MATTING_API_BASE=https://你的抠图服务根地址
+   INPAINT_API_BASE=https://你的擦除服务根地址
    OPENROUTER_API_KEY=sk-or-v1-...
    OPENROUTER_BASE_URL=https://llm.onerouter.pro/v1
    OPENROUTER_MODEL=google/gemini-3.1-flash-lite-preview
+   OPENROUTER_MODEL_TEXT_OCR=
+   OPENROUTER_MODEL_TRANSLATE=
+   OPENROUTER_MODEL_OBJECT=
    ```
 
    - `MATTING_API_BASE`：根地址 **不要** 尾随斜杠。抠图请求前会用 **`connectivity_plus` 判断设备是否已连接网络**（Wi‑Fi/蜂窝等），未连接则直接提示，不会对境外 URL 做 HTTP 探测。
-   - `OPENROUTER_*`：可选。有 Key 且设备已联网时，公式与解题请求发往 **`OPENROUTER_BASE_URL` + `/responses`**（与 [OneRouter](https://llm.onerouter.pro/) 的 OpenAI Responses 风格一致：`input` 含 `input_text` / `input_image`，`reasoning.effort` 固定为 `none`，结构化输出通过 `text.format.type=json_schema`）；默认基址为 `https://llm.onerouter.pro/v1`。
+   - `INPAINT_API_BASE`：AI 擦除服务根地址，客户端默认请求 `POST {base}/inpaint`（若变量本身已含 `/inpaint`，则直接使用）。
+   - `OPENROUTER_*`：可选。有 Key 且设备已联网时，公式与解题、文字识别、翻译、物体识别均发往 **`OPENROUTER_BASE_URL` + `/responses`**（与 [OneRouter](https://llm.onerouter.pro/) 的 OpenAI Responses 风格一致：`input` 含 `input_text` / `input_image`，`reasoning.effort` 固定为 `none`，结构化输出通过 `text.format.type=json_schema`）；默认基址为 `https://llm.onerouter.pro/v1`。其中 `OPENROUTER_MODEL_TEXT_OCR` / `OPENROUTER_MODEL_TRANSLATE` / `OPENROUTER_MODEL_OBJECT` 可分别覆盖三种视觉任务模型，留空时回退 `OPENROUTER_MODEL`。
 
 3. 运行或打包：
 
@@ -170,12 +179,13 @@ flutter build ios --dart-define-from-file=env/app.env
 
 ### HTTP 契约摘要
 
-客户端会按 `MATTING_API_BASE` 拼接路径并 `POST` **multipart/form-data**：
+客户端会按 `MATTING_API_BASE` / `INPAINT_API_BASE` 拼接路径并 `POST` **multipart/form-data**：
 
 | 场景 | 路径 | 表单字段 |
 |------|------|----------|
 | `general` / `high_precision` | `/process_high_precision` | `image`（JPEG）、`model_type` |
 | `transparent_matting` | `/process_transparent_matting` | 同上 |
+| `inpaint` | `/inpaint` | `image`（JPEG）、`mask`（PNG，黑底白笔） |
 
 成功时响应 JSON 含 **`mask`**：PNG 的 Base64（无 `data:` 前缀）；灰度蒙版的 **R 通道** 用作前景 alpha。单测可对 `CreatinfMattingService.processCameraJpeg` 传入 `mattingApiBaseOverride` 指向本地 Mock。
 
@@ -195,7 +205,7 @@ flutter build ios --dart-define-from-file=env/app.env
 - **联网 + 已配置 `OPENROUTER_API_KEY`**：[`LatexOcrService.recognizeJpeg`](lib/services/latex_ocr_service.dart) 先调用 [`OpenRouterFormulaClient`](lib/services/open_router_formula_client.dart) 视觉识别；失败或未联网时回退 ONNX。
 - **离线 / 无 Key**：依赖 **`assets/models/latex/`** 下 `encoder.onnx`、`decoder.onnx`、`image_resizer.onnx` 与 `tokenizer.json`（本仓库已跟踪）。替换自训模型时请保持文件名与 `pubspec.yaml` 中 `assets` 声明一致。
 
-结果页 **[`FormulaLatexResultPage`](lib/pages/formula_latex_result_page.dart)** 提供「智能解题 / 公式说明」：模型需返回 **`summary_zh`（简体中文小结/说明）** 与分步 **`steps[].title`（中文标题）+ `latex`（仅公式）**；可选 **`formula_explanation_latex`** 仅作短公式辑要，避免把英文句子当数学渲染。
+结果页 **[`FormulaLatexResultPage`](lib/pages/formula_latex_result_page.dart)** 提供「智能解题 / 公式说明」：模型需返回 **`summary_zh`（简体中文小结/说明）** 与分步 **`steps[].title`（中文标题）+ `latex`（仅公式）+ `axioms[]`（所用依据）**；可选 **`formula_explanation_latex`** 仅作短公式辑要，避免把英文句子当数学渲染。界面支持按步骤展开查看 `axioms[].name_zh` 与 `detail_zh`。
 
 ---
 
@@ -206,8 +216,8 @@ lib/
 ├── main.dart                 # 应用入口、主题
 ├── config/                   # 编译期环境变量封装（AppEnv）
 ├── models/                   # 拍摄模式、角点、相机帧等模型
-├── pages/                    # 首页、相机页、风格页、公式与抠图结果页等
-├── services/                 # ONNX 角点、透视裁剪、抠图 HTTP、LaTeX OCR、OpenRouter、风格处理
+├── pages/                    # 首页、相机页、风格页、证件照/擦除页、公式与抠图结果页等
+├── services/                 # ONNX 角点、透视裁剪、抠图/擦除 HTTP、LaTeX OCR、OpenRouter、PDF导出、分享
 ├── theme/                    # 设计 Token
 └── widgets/                  # 模式条、文档叠加层、反馈组件等
 env/                          # app.example.env（示例）；app.env 本地私密配置（gitignore）
@@ -234,7 +244,7 @@ flutter_reference/            # 可选：Python 脚本、重复模型等参考�
 
 - **贡献**：欢迎修复 Bug、补充测试、改进文档与可访问性；较大功能建议先开 Issue 对齐需求与接口。
 - **安全**：若发现敏感信息泄露或安全漏洞，请通过仓库 Security 策略或私信维护者 responsible disclosure（若已启用）。
-- **隐私**：抠图会上传图像至你配置的 `MATTING_API_BASE`；启用 OpenRouter 时，公式识别与解题/说明会上传 **裁剪图与 LaTeX 文本** 至 OpenRouter 及其上游模型提供商。请在产品说明与隐私政策中向终端用户明示。
+- **隐私**：抠图会上传图像至你配置的 `MATTING_API_BASE`；启用 OpenRouter 时，公式识别与解题/说明、文字识别、翻译、物体识别会上传 **图像与相关文本** 至 OpenRouter 及其上游模型提供商。请在产品说明与隐私政策中向终端用户明示。
 
 ---
 

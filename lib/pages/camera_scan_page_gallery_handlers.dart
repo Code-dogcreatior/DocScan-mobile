@@ -12,6 +12,8 @@ extension _CameraGalleryHandlers on _CameraScanPageState {
       CameraCaptureMode.textRecognition: _processVisionTextFromGallery,
       CameraCaptureMode.translate: _processVisionTranslateFromGallery,
       CameraCaptureMode.objectRecognition: _processVisionObjectFromGallery,
+      CameraCaptureMode.idPhoto: _processIdPhotoFromGallery,
+      CameraCaptureMode.aiErase: _processAiEraseFromGallery,
     };
   }
 

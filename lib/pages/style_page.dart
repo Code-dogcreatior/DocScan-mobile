@@ -6,6 +6,7 @@ import 'package:path_provider/path_provider.dart';
 
 import '../services/scan_style_processor.dart';
 import '../widgets/app_feedback.dart';
+import 'scan_document_page.dart';
 
 enum _StyleDisplay { original, smartHd }
 
@@ -212,13 +213,34 @@ class _StylePageState extends State<StylePage> {
             top: false,
             child: Padding(
               padding: const EdgeInsets.fromLTRB(20, 4, 20, 16),
-              child: SizedBox(
-                width: double.infinity,
-                child: FilledButton.icon(
-                  onPressed: _applyingSmartHd ? null : _save,
-                  icon: const Icon(Icons.save_rounded),
-                  label: const Text('保存结果'),
-                ),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: OutlinedButton.icon(
+                      onPressed: _applyingSmartHd ? null : _save,
+                      icon: const Icon(Icons.save_rounded),
+                      label: const Text('保存结果'),
+                    ),
+                  ),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: FilledButton.icon(
+                      onPressed: _applyingSmartHd
+                          ? null
+                          : () {
+                              Navigator.of(context).push<void>(
+                                MaterialPageRoute<void>(
+                                  builder: (_) => ScanDocumentPage(
+                                    initialPageJpegBytes: _bytesToShow,
+                                  ),
+                                ),
+                              );
+                            },
+                      icon: const Icon(Icons.picture_as_pdf_outlined),
+                      label: const Text('多页PDF'),
+                    ),
+                  ),
+                ],
               ),
             ),
           ),

@@ -240,12 +240,11 @@ class _FeatureData {
     required this.icon,
     required this.label,
     required this.initialMode,
-    this.enabled = true,
   });
   final IconData icon;
   final String label;
   final CameraCaptureMode initialMode;
-  final bool enabled;
+  bool get enabled => true;
 }
 
 const _featureItems = <_FeatureData>[
@@ -273,7 +272,6 @@ const _featureItems = <_FeatureData>[
     icon: Icons.badge_rounded,
     label: '证件照',
     initialMode: CameraCaptureMode.idPhoto,
-    enabled: false,
   ),
   _FeatureData(
     icon: Icons.text_fields_rounded,
@@ -294,7 +292,6 @@ const _featureItems = <_FeatureData>[
     icon: Icons.auto_fix_high_rounded,
     label: 'AI 擦除',
     initialMode: CameraCaptureMode.aiErase,
-    enabled: false,
   ),
 ];
 

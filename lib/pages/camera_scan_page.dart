@@ -26,6 +26,8 @@ import '../widgets/document_overlay_painter.dart';
 import 'formula_latex_result_page.dart';
 import 'formula_manual_crop_page.dart';
 import 'feature_unavailable_page.dart';
+import 'id_photo_result_page.dart';
+import 'inpaint_editor_page.dart';
 import 'llm_vision_task_result_page.dart';
 import 'matting_result_preview_page.dart';
 import 'plain_capture_preview_page.dart';
@@ -37,15 +39,20 @@ part 'camera_scan_page_capture_orchestrator.dart';
 part 'camera_scan_page_mode_actions.dart';
 part 'camera_scan_page_gallery_handlers.dart';
 part 'camera_scan_page_vision_llm.dart';
+part 'camera_scan_page_idphoto_inpaint.dart';
 
 class CameraScanPage extends StatefulWidget {
   const CameraScanPage({
     super.key,
     this.initialMode = CameraCaptureMode.scan,
+    this.returnScanResult = false,
   });
 
   /// 从主页等功能入口进入时指定；默认 [CameraCaptureMode.scan]。
   final CameraCaptureMode initialMode;
+
+  /// 为 `true` 时，扫描模式拍摄成功后直接 `pop(croppedBytes)` 返回，不进入 `StylePage`。
+  final bool returnScanResult;
 
   @override
   State<CameraScanPage> createState() => _CameraScanPageState();
@@ -141,6 +148,12 @@ class _CameraScanPageState extends State<CameraScanPage>
     }
     if (_mode == CameraCaptureMode.objectRecognition) {
       return '将待识别物体置于画面中央，光线充足$pinch';
+    }
+    if (_mode == CameraCaptureMode.idPhoto) {
+      return '拍摄正面免冠人像，自动生成证件照$pinch';
+    }
+    if (_mode == CameraCaptureMode.aiErase) {
+      return '拍照后涂抹要消除区域，自动重绘修复$pinch';
     }
     return '普通拍照：${_mode.title}$pinch';
   }
@@ -755,7 +768,14 @@ class _CameraScanPageState extends State<CameraScanPage>
         }
         return;
       }
-      
+
+      if (widget.returnScanResult && _mode.isScan) {
+        if (mounted) {
+          Navigator.of(context).pop<Uint8List>(cropped);
+        }
+        return;
+      }
+
       if (!mounted) return;
       await _pauseCameraPipeline();
       if (!mounted) return;

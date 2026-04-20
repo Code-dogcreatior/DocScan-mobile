@@ -9,6 +9,8 @@ extension _CameraModeActions on _CameraScanPageState {
     if (_mode == CameraCaptureMode.textRecognition) return '相册文字';
     if (_mode == CameraCaptureMode.translate) return '相册翻译';
     if (_mode == CameraCaptureMode.objectRecognition) return '相册识物';
+    if (_mode == CameraCaptureMode.idPhoto) return '相册证件照';
+    if (_mode == CameraCaptureMode.aiErase) return '相册消除';
     return '查看说明';
   }
 
@@ -19,6 +21,8 @@ extension _CameraModeActions on _CameraScanPageState {
         mode == CameraCaptureMode.formulaRecognition ||
         mode == CameraCaptureMode.textRecognition ||
         mode == CameraCaptureMode.translate ||
-        mode == CameraCaptureMode.objectRecognition;
+        mode == CameraCaptureMode.objectRecognition ||
+        mode == CameraCaptureMode.idPhoto ||
+        mode == CameraCaptureMode.aiErase;
   }
 }
