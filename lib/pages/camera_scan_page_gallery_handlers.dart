@@ -9,6 +9,9 @@ extension _CameraGalleryHandlers on _CameraScanPageState {
       CameraCaptureMode.aiCutout: _processMattingFromGallery,
       CameraCaptureMode.eSignatureScan: _processMattingFromGallery,
       CameraCaptureMode.formulaRecognition: _processFormulaFromGallery,
+      CameraCaptureMode.textRecognition: _processVisionTextFromGallery,
+      CameraCaptureMode.translate: _processVisionTranslateFromGallery,
+      CameraCaptureMode.objectRecognition: _processVisionObjectFromGallery,
     };
   }
 
@@ -22,14 +25,14 @@ extension _CameraGalleryHandlers on _CameraScanPageState {
   }
 
   Future<void> _processScanFromGallery(Uint8List jpegBytes) async {
-    setState(() => _hint = '正在处理相册图片...');
+    _setState(() => _hint = '正在处理相册图片...');
     final decodeResult = await compute(
       _decodeAndBakeTask,
       _DecodeTaskArgs(jpegBytes),
     );
     if (decodeResult == null) {
       if (mounted) {
-        setState(() {
+        _setState(() {
           _isCapturing = false;
           _hint = '无法解码相册图片';
         });
@@ -40,7 +43,7 @@ extension _CameraGalleryHandlers on _CameraScanPageState {
     final detect = await _detector.detectFromImage(baked);
     if (!detect.hasFourCorners) {
       if (mounted) {
-        setState(() {
+        _setState(() {
           _isCapturing = false;
           _hint = '相册图片未检测到四边形，请更换图片';
         });
@@ -53,7 +56,7 @@ extension _CameraGalleryHandlers on _CameraScanPageState {
     );
     if (cropped == null) {
       if (mounted) {
-        setState(() {
+        _setState(() {
           _isCapturing = false;
           _hint = '相册图片裁剪失败，请重试';
         });
@@ -69,7 +72,7 @@ extension _CameraGalleryHandlers on _CameraScanPageState {
   }
 
   Future<void> _processMattingFromGallery(Uint8List jpegBytes) async {
-    setState(() => _hint = '正在抠图，请稍候...');
+    _setState(() => _hint = '正在抠图，请稍候...');
     final png = await _mattingService.processCameraJpeg(
       jpegBytes,
       model: CreatinfMattingModel.highPrecision,
@@ -93,10 +96,10 @@ extension _CameraGalleryHandlers on _CameraScanPageState {
     );
     if (!mounted) return;
     if (croppedBin == null) {
-      setState(() => _hint = _idleHint());
+      _setState(() => _hint = _idleHint());
       return;
     }
-    setState(() => _hint = '正在识别公式...');
+    _setState(() => _hint = '正在识别公式...');
     final latex = await LatexOcrService.instance.recognizeJpeg(croppedBin);
     if (!mounted) return;
     await Navigator.of(context).push<void>(

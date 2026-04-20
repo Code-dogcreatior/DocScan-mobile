@@ -8,6 +8,9 @@ extension _CameraCaptureOrchestrator on _CameraScanPageState {
       CameraCaptureMode.aiCutout: _captureAndMatting,
       CameraCaptureMode.eSignatureScan: _captureSignatureMatting,
       CameraCaptureMode.formulaRecognition: _captureAndRecognizeFormula,
+      CameraCaptureMode.textRecognition: _captureVisionTextRecognition,
+      CameraCaptureMode.translate: _captureVisionTranslate,
+      CameraCaptureMode.objectRecognition: _captureVisionObjectRecognition,
     };
   }
 
@@ -21,17 +24,18 @@ extension _CameraCaptureOrchestrator on _CameraScanPageState {
   }
 
   Future<void> _captureWithPreviewFallback() async {
-    setState(() => _isCapturing = true);
+    _setState(() => _isCapturing = true);
     try {
       final rawBytes = await _captureRawPhotoBytes(
         busyHint: '正在拍照...',
         failHint: '拍照失败',
       );
       if (rawBytes == null || !mounted) {
-        setState(() => _isCapturing = false);
+        _setState(() => _isCapturing = false);
         return;
       }
       await _pauseCameraPipeline();
+      if (!mounted) return;
       try {
         await Navigator.of(context).push<void>(
           MaterialPageRoute<void>(
@@ -46,7 +50,7 @@ extension _CameraCaptureOrchestrator on _CameraScanPageState {
       }
     } finally {
       if (mounted) {
-        setState(() => _isCapturing = false);
+        _setState(() => _isCapturing = false);
       }
     }
   }
@@ -62,7 +66,7 @@ extension _CameraCaptureOrchestrator on _CameraScanPageState {
       await Future<void>.delayed(const Duration(milliseconds: 30));
     }
     if (!mounted) return null;
-    setState(() => _hint = busyHint);
+    _setState(() => _hint = busyHint);
     final shot = await c.takePicture();
     final rawBytes = await File(shot.path).readAsBytes();
     try {
@@ -71,7 +75,7 @@ extension _CameraCaptureOrchestrator on _CameraScanPageState {
     if (rawBytes.isEmpty) {
       await _resumePreviewAfterCapture();
       if (mounted) {
-        setState(() => _hint = failHint);
+        _setState(() => _hint = failHint);
       }
       return null;
     }

@@ -10,10 +10,13 @@ import 'package:flutter/services.dart';
 import 'package:image/image.dart' as img;
 import 'package:image_picker/image_picker.dart';
 
+import '../config/app_env.dart';
 import '../models/camera_capture_mode.dart';
 import '../models/corner_point.dart';
 import '../models/camera_yuv_snapshot.dart';
 import '../services/creatinf_matting_service.dart';
+import '../services/network_reachability.dart';
+import '../services/open_router_vision_tasks_client.dart';
 import '../services/latex_ocr_service.dart';
 import '../services/onnx_corner_detector.dart';
 import '../services/perspective_cropper.dart';
@@ -23,6 +26,7 @@ import '../widgets/document_overlay_painter.dart';
 import 'formula_latex_result_page.dart';
 import 'formula_manual_crop_page.dart';
 import 'feature_unavailable_page.dart';
+import 'llm_vision_task_result_page.dart';
 import 'matting_result_preview_page.dart';
 import 'plain_capture_preview_page.dart';
 import 'style_page.dart';
@@ -33,9 +37,16 @@ part 'camera_scan_page_capture_orchestrator.dart';
 part 'camera_scan_page_mode_actions.dart';
 part 'camera_scan_page_ui_state.dart';
 part 'camera_scan_page_gallery_handlers.dart';
+part 'camera_scan_page_vision_llm.dart';
 
 class CameraScanPage extends StatefulWidget {
-  const CameraScanPage({super.key});
+  const CameraScanPage({
+    super.key,
+    this.initialMode = CameraCaptureMode.scan,
+  });
+
+  /// 从主页等功能入口进入时指定；默认 [CameraCaptureMode.scan]。
+  final CameraCaptureMode initialMode;
 
   @override
   State<CameraScanPage> createState() => _CameraScanPageState();
@@ -63,7 +74,7 @@ class _CameraScanPageState extends State<CameraScanPage>
   double _zoom = 1.0;
   double _pinchBaseZoom = 1.0;
 
-  CameraCaptureMode _mode = CameraCaptureMode.scan;
+  late CameraCaptureMode _mode;
   late final PageController _modePageController;
 
   /// 离开「扫描」时自增，用于丢弃仍在进行中的预览推理结果，避免其它模式下仍跑 ONNX。
@@ -79,10 +90,14 @@ class _CameraScanPageState extends State<CameraScanPage>
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
+    _mode = widget.initialMode;
     _modePageController = PageController(
-      initialPage: CameraCaptureMode.scan.index,
+      initialPage: widget.initialMode.index,
       viewportFraction: 0.26,
     );
+    if (!_mode.isScan) {
+      _scanStreamEpoch++;
+    }
     _setup();
   }
 
@@ -102,6 +117,11 @@ class _CameraScanPageState extends State<CameraScanPage>
 
   bool get _zoomUsable => (_zoomMax - _zoomMin) > 0.02;
 
+  /// Part 文件里的 `extension on _CameraScanPageState` 无法调用受保护的 [State.setState]。
+  void _setState(VoidCallback fn) {
+    setState(fn);
+  }
+
   String _idleHint() {
     final pinch = _zoomUsable ? ' · 双指缩放取景' : '';
     if (_mode.isScan) return '请将文档完整放入取景框$pinch';
@@ -113,6 +133,15 @@ class _CameraScanPageState extends State<CameraScanPage>
     }
     if (_mode == CameraCaptureMode.formulaRecognition) {
       return '拍摄清晰公式，识别后可复制 LaTeX；尽量让公式占满画面、减少杂物$pinch';
+    }
+    if (_mode == CameraCaptureMode.textRecognition) {
+      return '拍摄含文字的主体，尽量让文字清晰、占满画面$pinch';
+    }
+    if (_mode == CameraCaptureMode.translate) {
+      return '拍摄需翻译的画面，保持文字清晰$pinch';
+    }
+    if (_mode == CameraCaptureMode.objectRecognition) {
+      return '将待识别物体置于画面中央，光线充足$pinch';
     }
     return '普通拍照：${_mode.title}$pinch';
   }
@@ -170,6 +199,8 @@ class _CameraScanPageState extends State<CameraScanPage>
       final cameras = await availableCameras();
       _cameraDescription = _selectPreferredCamera(cameras);
       await _bindCamera(resetCornerTracking: false);
+      if (!mounted) return;
+      await _syncImageStreamToMode();
     } catch (e) {
       if (!mounted) return;
       setState(() {
@@ -327,7 +358,8 @@ class _CameraScanPageState extends State<CameraScanPage>
     try {
       if (_controller != null && !_controller!.value.isStreamingImages) {
         await Future<void>.delayed(const Duration(milliseconds: 30));
-        if (!mounted || _controller == null || _isCapturing) {
+        // 勿用 _isCapturing 拦截：若干拍照流程在 finally 里先 resume 再置 false，否则会跳过恢复与 setState，预览卡死。
+        if (!mounted || _controller == null) {
           return;
         }
         if (_mode.isScan) {
@@ -472,15 +504,6 @@ class _CameraScanPageState extends State<CameraScanPage>
         orientation == DeviceOrientation.landscapeRight;
   }
 
-  int _previewQuarterTurns(CameraValue value) {
-    return switch (_applicableOrientation(value)) {
-      DeviceOrientation.portraitUp => 0,
-      DeviceOrientation.landscapeRight => 1,
-      DeviceOrientation.portraitDown => 2,
-      DeviceOrientation.landscapeLeft => 3,
-    };
-  }
-
   int _deviceTurns(CameraValue value) {
     return switch (_applicableOrientation(value)) {
       DeviceOrientation.portraitUp => 0,
@@ -501,17 +524,6 @@ class _CameraScanPageState extends State<CameraScanPage>
 
   double _previewAspectRatio(CameraValue value) {
     return _isLandscape(value) ? value.aspectRatio : (1 / value.aspectRatio);
-  }
-
-  Widget _wrapPreviewForPlatform(CameraController controller) {
-    final preview = controller.buildPreview();
-    if (Platform.isAndroid) {
-      return RotatedBox(
-        quarterTurns: _previewQuarterTurns(controller.value),
-        child: preview,
-      );
-    }
-    return preview;
   }
 
   Future<void> _applyZoomLevel(CameraController c, double z) async {
@@ -541,45 +553,60 @@ class _CameraScanPageState extends State<CameraScanPage>
     );
   }
 
-  Widget _buildPreviewSurface(CameraController controller) {
+  Widget _buildPreviewSurface(
+    CameraController controller, {
+    required double viewportMaxWidth,
+    required double viewportMaxHeight,
+  }) {
     final value = controller.value;
-    final preview = _wrapPreviewForPlatform(controller);
+    final ar = _previewAspectRatio(value);
+
+    // 与 package:camera 的 [CameraPreview] 一致：内部已含正确 AspectRatio + 平台旋转，勿再外包一层 AspectRatio，否则会变形。
+    final Widget previewCore;
     if (!_mode.isScan) {
-      return _wrapPreviewWithPinchZoom(
+      previewCore = CameraPreview(controller);
+    } else {
+      previewCore = CameraPreview(
         controller,
-        AspectRatio(
-          aspectRatio: _previewAspectRatio(value),
-          child: preview,
+        child: Positioned.fill(
+          child: RepaintBoundary(
+            child: _SmoothDocumentOverlay(
+              targetPoints: _points,
+              imageSize: _imageSize,
+              quarterTurns: _bufferToDisplayQuarterTurns(value),
+              isMirrored:
+                  value.description.lensDirection ==
+                  CameraLensDirection.front,
+              flipY: Platform.isAndroid &&
+                  value.description.lensDirection ==
+                      CameraLensDirection.back,
+              flipX: Platform.isAndroid &&
+                  value.description.lensDirection ==
+                      CameraLensDirection.back,
+            ),
+          ),
         ),
       );
     }
+
+    // 横向铺满：按传感器/预览原生宽高比定尺寸，超出视口部分上下居中裁剪。
+    final w = viewportMaxWidth.clamp(0.0, double.infinity);
+    final h = ar > 0 ? w / ar : viewportMaxHeight;
+
     return _wrapPreviewWithPinchZoom(
       controller,
-      AspectRatio(
-        aspectRatio: _previewAspectRatio(value),
-        child: Stack(
-          fit: StackFit.expand,
-          children: [
-            preview,
-            Positioned.fill(
-              child: RepaintBoundary(
-                child: _SmoothDocumentOverlay(
-                  targetPoints: _points,
-                  imageSize: _imageSize,
-                  quarterTurns: _bufferToDisplayQuarterTurns(value),
-                  isMirrored:
-                      value.description.lensDirection ==
-                      CameraLensDirection.front,
-                  flipY: Platform.isAndroid &&
-                      value.description.lensDirection ==
-                          CameraLensDirection.back,
-                  flipX: Platform.isAndroid &&
-                      value.description.lensDirection ==
-                          CameraLensDirection.back,
-                ),
-              ),
+      SizedBox(
+        width: viewportMaxWidth,
+        height: viewportMaxHeight,
+        child: ClipRect(
+          child: Align(
+            alignment: Alignment.center,
+            child: SizedBox(
+              width: w,
+              height: h,
+              child: previewCore,
             ),
-          ],
+          ),
         ),
       ),
     );
@@ -732,6 +759,7 @@ class _CameraScanPageState extends State<CameraScanPage>
       
       if (!mounted) return;
       await _pauseCameraPipeline();
+      if (!mounted) return;
       try {
         await Navigator.of(context).push(
           MaterialPageRoute<void>(
@@ -1094,6 +1122,10 @@ class _CameraScanPageState extends State<CameraScanPage>
       if (mounted) {
         setState(() => _hint = e.message);
       }
+    } on OpenRouterVisionTasksException catch (e) {
+      if (mounted) {
+        setState(() => _hint = e.message);
+      }
     } catch (e) {
       if (mounted) {
         setState(() => _hint = '相册处理失败: $e');
@@ -1177,7 +1209,7 @@ class _CameraScanPageState extends State<CameraScanPage>
           : SafeArea(
               top: true,
               child: LayoutBuilder(
-                builder: (context, constraints) {
+                builder: (context, _) {
                   return Column(
                     children: [
                       // ── Hint bar ──
@@ -1225,16 +1257,21 @@ class _CameraScanPageState extends State<CameraScanPage>
                         ),
                       ),
 
-                      // ── Camera preview ──
+                      // ── Camera preview（横向铺满，纵向按比例裁剪）──
                       Expanded(
                         child: ClipRRect(
                           borderRadius: BorderRadius.circular(16),
-                          child: Align(
-                            alignment: Alignment.topCenter,
-                            child: SizedBox(
-                              width: constraints.maxWidth - 16,
-                              child: _buildPreviewSurface(controller),
-                            ),
+                          child: LayoutBuilder(
+                            builder: (context, inner) {
+                              return Align(
+                                alignment: Alignment.center,
+                                child: _buildPreviewSurface(
+                                  controller,
+                                  viewportMaxWidth: inner.maxWidth,
+                                  viewportMaxHeight: inner.maxHeight,
+                                ),
+                              );
+                            },
                           ),
                         ),
                       ),

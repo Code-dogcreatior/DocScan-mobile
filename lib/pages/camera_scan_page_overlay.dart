@@ -77,63 +77,58 @@ class _BottomActionButton extends StatelessWidget {
     required this.icon,
     required this.label,
     this.onTap,
-    this.visible = true,
   });
 
   final IconData icon;
   final String label;
   final VoidCallback? onTap;
-  final bool visible;
 
   @override
   Widget build(BuildContext context) {
     return SizedBox(
       width: 72,
-      child: Opacity(
-        opacity: visible ? 1.0 : 0.0,
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Material(
-              color: Colors.transparent,
-              child: InkWell(
-                onTap: visible ? onTap : null,
-                borderRadius: BorderRadius.circular(14),
-                child: Ink(
-                  width: 48,
-                  height: 48,
-                  decoration: BoxDecoration(
-                    color: AppTokens.cameraForeground.withValues(
-                      alpha: onTap != null ? 0.15 : 0.06,
-                    ),
-                    borderRadius: BorderRadius.circular(14),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Material(
+            color: Colors.transparent,
+            child: InkWell(
+              onTap: onTap,
+              borderRadius: BorderRadius.circular(14),
+              child: Ink(
+                width: 48,
+                height: 48,
+                decoration: BoxDecoration(
+                  color: AppTokens.cameraForeground.withValues(
+                    alpha: onTap != null ? 0.15 : 0.06,
                   ),
-                  child: Icon(
-                    icon,
-                    color: onTap != null
-                        ? AppTokens.cameraForeground
-                        : AppTokens.cameraForegroundDisabled,
-                    size: 22,
-                  ),
+                  borderRadius: BorderRadius.circular(14),
+                ),
+                child: Icon(
+                  icon,
+                  color: onTap != null
+                      ? AppTokens.cameraForeground
+                      : AppTokens.cameraForegroundDisabled,
+                  size: 22,
                 ),
               ),
             ),
-            const SizedBox(height: 4),
-            Text(
-              label,
-              style: TextStyle(
-                color: onTap != null
-                    ? AppTokens.cameraForegroundMuted
-                    : Colors.white30,
-                fontSize: 10,
-                fontWeight: FontWeight.w500,
-              ),
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              textAlign: TextAlign.center,
+          ),
+          const SizedBox(height: 4),
+          Text(
+            label,
+            style: TextStyle(
+              color: onTap != null
+                  ? AppTokens.cameraForegroundMuted
+                  : Colors.white30,
+              fontSize: 10,
+              fontWeight: FontWeight.w500,
             ),
-          ],
-        ),
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            textAlign: TextAlign.center,
+          ),
+        ],
       ),
     );
   }

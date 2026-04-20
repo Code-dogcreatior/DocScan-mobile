@@ -44,5 +44,5 @@ app.*.map.json
 /android/app/profile
 /android/app/release
 
-# 本地抠图 API 根地址（勿提交）
-matting_local.env
+# 本地环境（勿提交密钥与私有 URL）
+env/app.env

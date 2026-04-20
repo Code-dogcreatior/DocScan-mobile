@@ -6,6 +6,9 @@ extension _CameraModeActions on _CameraScanPageState {
     if (_mode == CameraCaptureMode.aiCutout) return '相册抠图';
     if (_mode == CameraCaptureMode.eSignatureScan) return '相册签名';
     if (_mode == CameraCaptureMode.formulaRecognition) return '相册识别';
+    if (_mode == CameraCaptureMode.textRecognition) return '相册文字';
+    if (_mode == CameraCaptureMode.translate) return '相册翻译';
+    if (_mode == CameraCaptureMode.objectRecognition) return '相册识物';
     return '查看说明';
   }
 
@@ -13,6 +16,9 @@ extension _CameraModeActions on _CameraScanPageState {
     return mode.isScan ||
         mode == CameraCaptureMode.aiCutout ||
         mode == CameraCaptureMode.eSignatureScan ||
-        mode == CameraCaptureMode.formulaRecognition;
+        mode == CameraCaptureMode.formulaRecognition ||
+        mode == CameraCaptureMode.textRecognition ||
+        mode == CameraCaptureMode.translate ||
+        mode == CameraCaptureMode.objectRecognition;
   }
 }

@@ -10,7 +10,7 @@
 | 2 | `aiCutout` | AI 抠图 | 已接入：拍照 → [CreatinfMattingService](../lib/services/creatinf_matting_service.dart) → 结果页可保存至相册 [MattingResultPreviewPage](../lib/pages/matting_result_preview_page.dart) |
 | 3 | `eSignatureScan` | 扫描电子签名 | 已接入：**独立**拍照流程 [`_captureSignatureMatting`](../lib/pages/camera_scan_page.dart)（不调用抠图轨 `_captureAndMatting`）；`takePicture` 前有白纸签名确认对话框；初版仍走同一抠图服务与 [MattingResultPreviewPage](../lib/pages/matting_result_preview_page.dart) |
 | 4 | `idPhoto` | 证件照 | 占位 |
-| 5 | `formulaRecognition` | 公式识别 | 已接入：拍照 → 端侧 [LatexOcrService](../lib/services/latex_ocr_service.dart)（ONNX + `tokenizer.json`）→ [FormulaLatexResultPage](../lib/pages/formula_latex_result_page.dart) 可复制 LaTeX；需自备 `encoder.onnx` / `decoder.onnx` / `image_resizer.onnx` 并写入 `pubspec.yaml` assets |
+| 5 | `formulaRecognition` | 公式识别 | 已接入：拍照 → [LatexOcrService](../lib/services/latex_ocr_service.dart)（联网且配置 `OPENROUTER_API_KEY` 时优先 OpenRouter 视觉；否则 ONNX + `tokenizer.json`）→ [FormulaLatexResultPage](../lib/pages/formula_latex_result_page.dart) 可复制 LaTeX，并可触发「解题/公式说明」（`json_schema`）；详见 README「统一环境变量」 |
 | 6 | `textRecognition` | 文字识别 | 占位 |
 | 7 | `translate` | 翻译 | 占位 |
 | 8 | `objectRecognition` | 物体识别 | 占位 |

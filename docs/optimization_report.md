@@ -20,7 +20,7 @@
 | 事项 | 说明 | 工作量 |
 |------|------|--------|
 | **单元测试** | `test/` 下仅有空壳模板。建议至少覆盖：`PerspectiveCropper._computeHomography`、`LatexOutputSanitizer.stripModelArtifacts`、`ScanStyleProcessor._percentileFast`、`CornerPoint` 排序逻辑 | 中 |
-| **API URL 外置** | 抠图根地址应通过 `MATTING_API_BASE`（`--dart-define` / `matting_local.env`）注入，避免写进已跟踪源码 | 小 |
+| **API URL 外置** | 抠图与 OpenRouter 等应通过 `env/app.env`（`--dart-define-from-file`）或 `--dart-define` 注入，避免写进已跟踪源码 | 小 |
 
 ### P1 — 架构 & 可维护性
 

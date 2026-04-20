@@ -8,8 +8,14 @@ import 'package:onnxruntime/onnxruntime.dart';
 import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
 
+import '../config/app_env.dart';
 import 'latex_onnx_file_stub.dart' if (dart.library.io) 'latex_onnx_file_io.dart'
     as onnx_file;
+import 'network_reachability.dart';
+import 'open_router_formula_client.dart';
+
+export 'open_router_formula_client.dart'
+    show FormulaSolveResult, FormulaSolveStep, OpenRouterFormulaException;
 
 // ---------------------------------------------------------------------------
 // 输出清理（与渲染器格式无关：非法 TeX 如 `\9`、`[EOS]` 等需剔除）
@@ -321,7 +327,26 @@ class LatexOcrService {
   }
 
   /// 识别 JPEG 字节，返回 post_process 后的 LaTeX 字符串。
+  ///
+  /// 若已配置 [AppEnv.openRouterApiKey] 且 [NetworkReachability] 判断设备已联网，
+  /// 优先走 OpenRouter 视觉模型（通常比端侧 ONNX 更准）；失败或未联网时回退 ONNX。
   Future<String> recognizeJpeg(Uint8List jpegBytes) async {
+    final cloudFirst =
+        AppEnv.hasOpenRouterKey && await NetworkReachability.instance.quickCheck();
+    if (cloudFirst) {
+      try {
+        final cloud = await OpenRouterFormulaClient.instance
+            .recognizeLatexFromJpeg(jpegBytes);
+        if (cloud.trim().isNotEmpty) {
+          return LatexOutputSanitizer.stripModelArtifacts(cloud);
+        }
+      } catch (e, st) {
+        if (kDebugMode) {
+          debugPrint('[LatexOcrService] OpenRouter 识别失败，回退 ONNX: $e\n$st');
+        }
+      }
+    }
+
     await ensureInitialized();
     final tok = _tokenizer!;
     final encoder = _encoder!;
@@ -334,6 +359,17 @@ class LatexOcrService {
     final tokenIds = _runDecoderAutoregressive(decoder, ctx.data, ctx.shape);
     final raw = tok.tokenIdsToLatexString(tokenIds);
     return LatexOutputSanitizer.stripModelArtifacts(_postProcess(raw));
+  }
+
+  /// 联网 + 已配置 OpenRouter 时，请求模型给出「可解则分步 LaTeX / 不可解则说明公式」。
+  Future<FormulaSolveResult> solveOrExplainFromHint({
+    required String latexHint,
+    Uint8List? imageJpegBytes,
+  }) {
+    return OpenRouterFormulaClient.instance.solveOrExplain(
+      imageJpegBytes: imageJpegBytes,
+      latexHint: latexHint,
+    );
   }
 
   img.Image _loadRgbFromJpeg(Uint8List jpegBytes) {

@@ -1,14 +1,20 @@
 import 'package:flutter/material.dart';
 
+import '../models/camera_capture_mode.dart';
 import 'camera_scan_page.dart';
 import '../theme/app_tokens.dart';
 
 class HomePage extends StatelessWidget {
   const HomePage({super.key});
 
-  void _openScan(BuildContext context) {
+  void _openCamera(
+    BuildContext context, {
+    CameraCaptureMode mode = CameraCaptureMode.scan,
+  }) {
     Navigator.of(context).push(
-      MaterialPageRoute<void>(builder: (_) => const CameraScanPage()),
+      MaterialPageRoute<void>(
+        builder: (_) => CameraScanPage(initialMode: mode),
+      ),
     );
   }
 
@@ -94,7 +100,7 @@ class HomePage extends StatelessWidget {
                         elevation: 2,
                         shadowColor: cs.primary.withValues(alpha: 0.4),
                         child: InkWell(
-                          onTap: () => _openScan(context),
+                          onTap: () => _openCamera(context),
                           borderRadius: BorderRadius.circular(20),
                           child: Padding(
                             padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 22),
@@ -184,7 +190,9 @@ class HomePage extends StatelessWidget {
                         label: item.label,
                         color: AppTokens.featurePalette[index],
                         enabled: item.enabled,
-                        onTap: item.enabled ? () => _openScan(context) : null,
+                        onTap: item.enabled
+                            ? () => _openCamera(context, mode: item.initialMode)
+                            : null,
                       );
                     }).toList(),
                   ),
@@ -231,23 +239,63 @@ class _FeatureData {
   const _FeatureData({
     required this.icon,
     required this.label,
+    required this.initialMode,
     this.enabled = true,
   });
   final IconData icon;
   final String label;
+  final CameraCaptureMode initialMode;
   final bool enabled;
 }
 
 const _featureItems = <_FeatureData>[
-  _FeatureData(icon: Icons.document_scanner_rounded, label: '文档扫描'),
-  _FeatureData(icon: Icons.auto_awesome_rounded, label: 'AI 抠图'),
-  _FeatureData(icon: Icons.draw_rounded, label: '电子签名'),
-  _FeatureData(icon: Icons.functions_rounded, label: '公式识别'),
-  _FeatureData(icon: Icons.badge_rounded, label: '证件照', enabled: false),
-  _FeatureData(icon: Icons.text_fields_rounded, label: '文字识别', enabled: false),
-  _FeatureData(icon: Icons.translate_rounded, label: '翻译', enabled: false),
-  _FeatureData(icon: Icons.search_rounded, label: '物体识别', enabled: false),
-  _FeatureData(icon: Icons.auto_fix_high_rounded, label: 'AI 擦除', enabled: false),
+  _FeatureData(
+    icon: Icons.document_scanner_rounded,
+    label: '文档扫描',
+    initialMode: CameraCaptureMode.scan,
+  ),
+  _FeatureData(
+    icon: Icons.auto_awesome_rounded,
+    label: 'AI 抠图',
+    initialMode: CameraCaptureMode.aiCutout,
+  ),
+  _FeatureData(
+    icon: Icons.draw_rounded,
+    label: '电子签名',
+    initialMode: CameraCaptureMode.eSignatureScan,
+  ),
+  _FeatureData(
+    icon: Icons.functions_rounded,
+    label: '公式识别',
+    initialMode: CameraCaptureMode.formulaRecognition,
+  ),
+  _FeatureData(
+    icon: Icons.badge_rounded,
+    label: '证件照',
+    initialMode: CameraCaptureMode.idPhoto,
+    enabled: false,
+  ),
+  _FeatureData(
+    icon: Icons.text_fields_rounded,
+    label: '文字识别',
+    initialMode: CameraCaptureMode.textRecognition,
+  ),
+  _FeatureData(
+    icon: Icons.translate_rounded,
+    label: '翻译',
+    initialMode: CameraCaptureMode.translate,
+  ),
+  _FeatureData(
+    icon: Icons.search_rounded,
+    label: '物体识别',
+    initialMode: CameraCaptureMode.objectRecognition,
+  ),
+  _FeatureData(
+    icon: Icons.auto_fix_high_rounded,
+    label: 'AI 擦除',
+    initialMode: CameraCaptureMode.aiErase,
+    enabled: false,
+  ),
 ];
 
 // ── Feature tile widget ──

@@ -4,8 +4,11 @@ import 'dart:typed_data';
 import 'package:http/http.dart' as http;
 import 'package:image/image.dart' as img;
 
+import '../config/app_env.dart';
+import 'network_reachability.dart';
+
 /// 远程抠图：multipart 上传 JPEG，`model_type` 与固定路径端点约定见实现。
-/// 根地址仅来自编译期 `MATTING_API_BASE`（或单测 override）。
+/// 根地址来自编译期 [AppEnv.mattingApiBase]（或单测 override）。
 class CreatinfMattingException implements Exception {
   CreatinfMattingException(this.message);
   final String message;
@@ -57,8 +60,7 @@ class CreatinfMattingService {
     if (override != null && override.trim().isNotEmpty) {
       return override.trim();
     }
-    const fromEnv = String.fromEnvironment('MATTING_API_BASE');
-    return fromEnv.trim();
+    return AppEnv.mattingApiBase.trim();
   }
 
   /// 相机 JPEG 字节 → 带透明通道的 PNG。
@@ -71,9 +73,16 @@ class CreatinfMattingService {
     final base = resolvedBaseUrl(override: mattingApiBaseOverride);
     if (base.isEmpty) {
       throw CreatinfMattingException(
-        '未配置抠图服务地址。请在本机维护 matting_local.env（见 matting_local.example.env），'
-        '并以 `flutter run --dart-define-from-file=matting_local.env` 运行；'
-        '或直接使用 `--dart-define=MATTING_API_BASE=...`（勿把真实地址提交到 Git）。',
+        '未配置抠图服务地址。请复制 env/app.example.env 为 env/app.env，填写 MATTING_API_BASE，'
+        '并以 `flutter run --dart-define-from-file=env/app.env` 运行；'
+        '或 `--dart-define=MATTING_API_BASE=...`（勿把真实地址提交到 Git）。',
+      );
+    }
+
+    final online = await NetworkReachability.instance.quickCheck();
+    if (!online) {
+      throw CreatinfMattingException(
+        '当前无网络连接（Wi‑Fi/蜂窝未连接或未授权），抠图 API 不可用。请连接网络后重试。',
       );
     }
 

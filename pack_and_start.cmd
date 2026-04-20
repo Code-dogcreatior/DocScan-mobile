@@ -1,5 +1,9 @@
 @echo off
 setlocal EnableDelayedExpansion
+rem Usage:
+rem   pack_and_start.cmd              ^> flutter run ^(uses env\app.env^)
+rem   pack_and_start.cmd build ...  ^> flutter build apk ... ^(same env\app.env^)
+rem   pack_and_start.cmd apk ...    ^> same as build
 
 set "SCRIPT_DIR=%~dp0"
 set "FLUTTER_BIN=D:\flutter\bin\flutter.bat"
@@ -19,6 +23,15 @@ if errorlevel 1 (
     echo [ERROR] Cannot cd to project directory.
     exit /b 1
 )
+
+set "APP_ENV=%SCRIPT_DIR%env\app.env"
+if not exist "%APP_ENV%" (
+    echo [ERROR] Missing "%APP_ENV%".
+    echo        Copy env\app.example.env to env\app.env and fill in values.
+    exit /b 1
+)
+echo [INFO] dart-define-from-file: "%APP_ENV%"
+
 set /a STEP+=1
 echo [STEP !STEP!] Project dir: "%SCRIPT_DIR%"
 
@@ -74,6 +87,9 @@ if errorlevel 1 (
     exit /b 1
 )
 
+if /I "%~1"=="build" goto :flutter_build_apk_entry
+if /I "%~1"=="apk" goto :flutter_build_apk_entry
+
 set /a STEP+=1
 echo [STEP !STEP!] Locating adb...
 for /f "delims=" %%I in ('where.exe adb 2^>nul') do (
@@ -118,8 +134,8 @@ if defined SAMSUNG_SERIAL (
 
 rem Dependencies already resolved above; avoid pub get again inside flutter run
 set /a STEP+=1
-echo [STEP !STEP!] Starting flutter run (--no-pub)...
-call "%FLUTTER_BIN%" run --no-pub -d "!TARGET_SERIAL!" !RUN_EXTRAS! %*
+echo [STEP !STEP!] Starting flutter run (--no-pub, --dart-define-from-file)...
+call "%FLUTTER_BIN%" run --no-pub -d "!TARGET_SERIAL!" --dart-define-from-file="%APP_ENV%" !RUN_EXTRAS! %*
 if errorlevel 1 (
     echo [ERROR] flutter run failed.
     exit /b 1
@@ -127,6 +143,17 @@ if errorlevel 1 (
 
 endlocal
 exit /b 0
+
+:flutter_build_apk_entry
+set /a STEP+=1
+echo [STEP !STEP!] Building APK (--dart-define-from-file)...
+call :flutter_build_apk_sub %*
+exit /b %errorlevel%
+
+:flutter_build_apk_sub
+shift
+call "%FLUTTER_BIN%" build apk --no-pub --dart-define-from-file="%APP_ENV%" %*
+exit /b %errorlevel%
 
 :pick_target_serial
 set "SAMSUNG_SERIAL="

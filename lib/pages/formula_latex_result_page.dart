@@ -2,11 +2,13 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_math_fork/flutter_math.dart';
 
+import '../config/app_env.dart';
 import '../services/latex_ocr_service.dart';
+import '../services/network_reachability.dart';
 import '../widgets/app_feedback.dart';
 
-/// 公式识别结果：TeX 预览、LaTeX 源码与复制。
-class FormulaLatexResultPage extends StatelessWidget {
+/// 公式识别结果：TeX 预览、LaTeX 源码与复制；联网时可请求「解题 / 公式说明」。
+class FormulaLatexResultPage extends StatefulWidget {
   const FormulaLatexResultPage({
     super.key,
     required this.latex,
@@ -15,6 +17,15 @@ class FormulaLatexResultPage extends StatelessWidget {
 
   final String latex;
   final Uint8List? recognitionImageBytes;
+
+  @override
+  State<FormulaLatexResultPage> createState() => _FormulaLatexResultPageState();
+}
+
+class _FormulaLatexResultPageState extends State<FormulaLatexResultPage> {
+  bool _solveLoading = false;
+  FormulaSolveResult? _solveResult;
+  String? _solveError;
 
   static String _expressionForRender(String raw) {
     var t = raw.trim();
@@ -43,11 +54,79 @@ class FormulaLatexResultPage extends StatelessWidget {
     );
   }
 
+  Future<void> _runSolve() async {
+    if (!AppEnv.hasOpenRouterKey) {
+      showAppSnackBar(
+        context,
+        message: '未配置 OPENROUTER_API_KEY（见 env/app.example.env）',
+        icon: Icons.vpn_key_off_outlined,
+      );
+      return;
+    }
+    final online = await NetworkReachability.instance.quickCheck();
+    if (!mounted) return;
+    if (!online) {
+      showAppSnackBar(
+        context,
+        message: '当前无网络连接，请连接 Wi‑Fi 或蜂窝数据后重试',
+        icon: Icons.wifi_off_rounded,
+      );
+      return;
+    }
+
+    setState(() {
+      _solveLoading = true;
+      _solveError = null;
+    });
+    try {
+      final cleaned =
+          LatexOutputSanitizer.stripModelArtifacts(widget.latex.trim());
+      final result = await LatexOcrService.instance.solveOrExplainFromHint(
+        latexHint: cleaned,
+        imageJpegBytes: widget.recognitionImageBytes,
+      );
+      if (!mounted) return;
+      setState(() {
+        _solveResult = result;
+        _solveLoading = false;
+      });
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _solveLoading = false;
+        _solveError = e.toString();
+      });
+    }
+  }
+
+  Widget _mathBlock(BuildContext context, String expr) {
+    final cs = Theme.of(context).colorScheme;
+    final e = _expressionForRender(expr);
+    if (e.isEmpty) {
+      return Text(
+        '（无内容可渲染）',
+        style: TextStyle(color: cs.onSurfaceVariant),
+      );
+    }
+    return Math.tex(
+      e,
+      mathStyle: MathStyle.display,
+      textStyle: TextStyle(
+        fontSize: 20,
+        color: cs.onSurface,
+      ),
+      onErrorFallback: (err) => Text(
+        '渲染失败：${err.messageWithType}',
+        style: TextStyle(fontSize: 13, color: cs.error),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final cs = theme.colorScheme;
-    final cleaned = LatexOutputSanitizer.stripModelArtifacts(latex);
+    final cleaned = LatexOutputSanitizer.stripModelArtifacts(widget.latex);
     final expr = _expressionForRender(cleaned);
 
     return Scaffold(
@@ -69,9 +148,8 @@ class FormulaLatexResultPage extends StatelessWidget {
             children: [
               const SizedBox(height: 16),
 
-              // ── Debug image (collapsible) ──
-              if (recognitionImageBytes != null &&
-                  recognitionImageBytes!.isNotEmpty) ...[
+              if (widget.recognitionImageBytes != null &&
+                  widget.recognitionImageBytes!.isNotEmpty) ...[
                 _SectionCard(
                   title: '识别用图像',
                   subtitle: '裁剪并二值化后的输入',
@@ -84,7 +162,7 @@ class FormulaLatexResultPage extends StatelessWidget {
                         minScale: 0.5,
                         maxScale: 4,
                         child: Image.memory(
-                          recognitionImageBytes!,
+                          widget.recognitionImageBytes!,
                           fit: BoxFit.contain,
                           gaplessPlayback: true,
                         ),
@@ -95,12 +173,12 @@ class FormulaLatexResultPage extends StatelessWidget {
                 const SizedBox(height: 16),
               ],
 
-              // ── Formula preview ──
               _SectionCard(
                 title: '公式预览',
                 icon: Icons.functions_rounded,
                 child: ConstrainedBox(
-                  constraints: const BoxConstraints(minHeight: 100, maxHeight: 260),
+                  constraints:
+                      const BoxConstraints(minHeight: 100, maxHeight: 260),
                   child: cleaned.isEmpty || expr.isEmpty
                       ? Center(
                           child: Text(
@@ -143,7 +221,6 @@ class FormulaLatexResultPage extends StatelessWidget {
               ),
               const SizedBox(height: 16),
 
-              // ── LaTeX source ──
               _SectionCard(
                 title: 'LaTeX 源码',
                 icon: Icons.code_rounded,
@@ -160,11 +237,124 @@ class FormulaLatexResultPage extends StatelessWidget {
                   ),
                 ),
               ),
-              const SizedBox(height: 20),
+              const SizedBox(height: 16),
 
-              // ── Copy button ──
+              FilledButton.tonalIcon(
+                onPressed: (_solveLoading || cleaned.isEmpty)
+                    ? null
+                    : _runSolve,
+                icon: _solveLoading
+                    ? const SizedBox(
+                        width: 20,
+                        height: 20,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      )
+                    : const Icon(Icons.auto_awesome_rounded),
+                label: Text(
+                  _solveLoading ? '正在请求…' : '智能解题 / 公式说明（联网）',
+                ),
+              ),
+              if (_solveError != null) ...[
+                const SizedBox(height: 8),
+                Text(
+                  _solveError!,
+                  style: TextStyle(color: cs.error, fontSize: 13),
+                ),
+              ],
+              if (_solveResult != null) ...[
+                const SizedBox(height: 16),
+                _SectionCard(
+                  title: _solveResult!.solvable ? '解题步骤' : '公式说明',
+                  subtitle: _solveResult!.solvable
+                      ? '由云端模型生成，与 ONNX 独立'
+                      : '当前式子不便给出数值解，以下为含义说明',
+                  icon: _solveResult!.solvable
+                      ? Icons.format_list_numbered_rounded
+                      : Icons.info_outline_rounded,
+                  child: Padding(
+                    padding: const EdgeInsets.fromLTRB(12, 0, 12, 12),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        if (_solveResult!.solvable &&
+                            _solveResult!.steps.isNotEmpty)
+                          ..._solveResult!.steps.map((s) {
+                            return Padding(
+                              padding: const EdgeInsets.only(bottom: 14),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  if (s.title.trim().isNotEmpty)
+                                    Text(
+                                      s.title,
+                                      style: theme.textTheme.titleSmall
+                                          ?.copyWith(
+                                        fontWeight: FontWeight.w600,
+                                      ),
+                                    ),
+                                  if (s.latex.trim().isNotEmpty) ...[
+                                    const SizedBox(height: 6),
+                                    SingleChildScrollView(
+                                      scrollDirection: Axis.horizontal,
+                                      child: _mathBlock(context, s.latex),
+                                    ),
+                                  ],
+                                ],
+                              ),
+                            );
+                          }),
+                        if (_solveResult!.summaryZh.trim().isNotEmpty) ...[
+                          if (_solveResult!.solvable &&
+                              _solveResult!.steps.isNotEmpty)
+                            const Divider(height: 24),
+                          Text(
+                            _solveResult!.solvable ? '小结' : '说明',
+                            style: theme.textTheme.titleSmall?.copyWith(
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                          const SizedBox(height: 8),
+                          SelectableText(
+                            _solveResult!.summaryZh,
+                            style: theme.textTheme.bodyMedium?.copyWith(
+                              height: 1.45,
+                              color: cs.onSurface,
+                            ),
+                          ),
+                        ],
+                        if (_solveResult!
+                            .formulaExplanationLatex
+                            .trim()
+                            .isNotEmpty) ...[
+                          if (_solveResult!.summaryZh.trim().isNotEmpty ||
+                              (_solveResult!.solvable &&
+                                  _solveResult!.steps.isNotEmpty))
+                            const SizedBox(height: 16),
+                          Text(
+                            '公式辑要',
+                            style: theme.textTheme.titleSmall?.copyWith(
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                          const SizedBox(height: 8),
+                          SingleChildScrollView(
+                            scrollDirection: Axis.horizontal,
+                            child: _mathBlock(
+                              context,
+                              _solveResult!.formulaExplanationLatex,
+                            ),
+                          ),
+                        ],
+                      ],
+                    ),
+                  ),
+                ),
+              ],
+
+              const SizedBox(height: 12),
               FilledButton.icon(
-                onPressed: cleaned.isEmpty ? null : () => _copy(context, cleaned),
+                onPressed:
+                    cleaned.isEmpty ? null : () => _copy(context, cleaned),
                 icon: const Icon(Icons.copy_rounded),
                 label: const Text('复制 LaTeX'),
               ),
@@ -224,7 +414,7 @@ class _SectionCard extends StatelessWidget {
                       style: theme.textTheme.bodySmall?.copyWith(
                         color: cs.onSurfaceVariant,
                       ),
-                      maxLines: 1,
+                      maxLines: 2,
                       overflow: TextOverflow.ellipsis,
                     ),
                   ),

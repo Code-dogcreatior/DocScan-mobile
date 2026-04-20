@@ -233,8 +233,11 @@ class ScanStyleProcessor {
         double v = 0.0;
         for (int i = 0; i < kSize; i++) {
           int cx = x + i - center;
-          if (cx < 0) cx = -cx;
-          else if (cx >= w) cx = 2 * w - cx - 1;
+          if (cx < 0) {
+            cx = -cx;
+          } else if (cx >= w) {
+            cx = 2 * w - cx - 1;
+          }
           cx = cx.clamp(0, w - 1);
           v += src[y * w + cx] * kernel[i];
         }
@@ -248,8 +251,11 @@ class ScanStyleProcessor {
         double v = 0.0;
         for (int i = 0; i < kSize; i++) {
           int cy = y + i - center;
-          if (cy < 0) cy = -cy;
-          else if (cy >= h) cy = 2 * h - cy - 1;
+          if (cy < 0) {
+            cy = -cy;
+          } else if (cy >= h) {
+            cy = 2 * h - cy - 1;
+          }
           cy = cy.clamp(0, h - 1);
           v += tmp[cy * w + x] * kernel[i];
         }
@@ -380,7 +386,9 @@ class ScanStyleProcessor {
       final hsv = _rgbToHsv(r[i], g[i], b[i]);
       final minc = math.min(r[i], math.min(g[i], b[i]));
       final chroma = hsv[2] - minc;
-      if (hsv[1] >= satTh && chroma >= chromaTh) cand[i] = 1;
+      if (hsv[1] >= satTh && chroma >= chromaTh) {
+        cand[i] = 1;
+      }
     }
     _morphCloseInPlace(cand, w, h, 7);
     final minArea = math.max(800, (w * h * minAreaRatio).round());
@@ -390,7 +398,9 @@ class ScanStyleProcessor {
   void _morphCloseInPlace(Uint8List m, int w, int h, int k) {
     final dil = _dilateBinary(m, w, h, k);
     final ero = _erodeBinary(dil, w, h, k);
-    for (var i = 0; i < m.length; i++) m[i] = ero[i];
+    for (var i = 0; i < m.length; i++) {
+      m[i] = ero[i];
+    }
   }
 
   Uint8List _dilateBinary(Uint8List m, int w, int h, int k) {
@@ -461,7 +471,9 @@ class ScanStyleProcessor {
         }
       }
       if (component.length >= minArea) {
-        for (final c in component) out[c] = 1;
+        for (final c in component) {
+          out[c] = 1;
+        }
       }
     }
     return out;
