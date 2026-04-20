@@ -15,7 +15,11 @@ import 'network_reachability.dart';
 import 'open_router_formula_client.dart';
 
 export 'open_router_formula_client.dart'
-    show FormulaSolveResult, FormulaSolveStep, OpenRouterFormulaException;
+    show
+        FormulaSolveResult,
+        FormulaSolveStep,
+        FormulaStepAxiom,
+        OpenRouterFormulaException;
 
 // ---------------------------------------------------------------------------
 // 输出清理（与渲染器格式无关：非法 TeX 如 `\9`、`[EOS]` 等需剔除）

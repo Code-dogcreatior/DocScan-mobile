@@ -99,6 +99,14 @@ class _FormulaLatexResultPageState extends State<FormulaLatexResultPage> {
     }
   }
 
+  String _axiomCollapsedSubtitle(FormulaSolveStep s) {
+    if (s.axioms.isEmpty) {
+      return '本步未列出单独条目，可展开查看说明';
+    }
+    final n = s.axioms.length;
+    return n == 1 ? '点击展开查看依据说明' : '共 $n 条，点击展开';
+  }
+
   Widget _mathBlock(BuildContext context, String expr) {
     final cs = Theme.of(context).colorScheme;
     final e = _expressionForRender(expr);
@@ -278,7 +286,21 @@ class _FormulaLatexResultPageState extends State<FormulaLatexResultPage> {
                       children: [
                         if (_solveResult!.solvable &&
                             _solveResult!.steps.isNotEmpty)
-                          ..._solveResult!.steps.map((s) {
+                          ..._solveResult!.steps.asMap().entries.map((entry) {
+                            final i = entry.key;
+                            final s = entry.value;
+                            final axiomTitle = () {
+                              if (s.axioms.isEmpty) return '所用依据';
+                              final brief = s.axioms
+                                  .map((a) => a.nameZh.trim())
+                                  .where((t) => t.isNotEmpty)
+                                  .take(4)
+                                  .join('、');
+                              if (brief.isEmpty) {
+                                return '所用依据（展开见说明）';
+                              }
+                              return '所用依据：$brief${s.axioms.length > 4 ? '…' : ''}';
+                            }();
                             return Padding(
                               padding: const EdgeInsets.only(bottom: 14),
                               child: Column(
@@ -299,6 +321,100 @@ class _FormulaLatexResultPageState extends State<FormulaLatexResultPage> {
                                       child: _mathBlock(context, s.latex),
                                     ),
                                   ],
+                                  const SizedBox(height: 8),
+                                  Theme(
+                                    data: theme.copyWith(
+                                      dividerColor: Colors.transparent,
+                                      splashColor: cs.primary.withValues(
+                                        alpha: 0.08,
+                                      ),
+                                    ),
+                                    child: ExpansionTile(
+                                      key: ValueKey<String>(
+                                        'step_axioms_${s.title}_$i',
+                                      ),
+                                      tilePadding: EdgeInsets.zero,
+                                      expandedAlignment: Alignment.topLeft,
+                                      childrenPadding:
+                                          const EdgeInsets.fromLTRB(
+                                        0,
+                                        0,
+                                        0,
+                                        4,
+                                      ),
+                                      title: Text(
+                                        axiomTitle,
+                                        style: theme.textTheme.bodyMedium
+                                            ?.copyWith(
+                                          fontWeight: FontWeight.w600,
+                                          color: cs.primary,
+                                        ),
+                                      ),
+                                      subtitle: Text(
+                                        _axiomCollapsedSubtitle(s),
+                                        style: theme.textTheme.bodySmall
+                                            ?.copyWith(
+                                          color: cs.onSurfaceVariant,
+                                        ),
+                                      ),
+                                      children: [
+                                        if (s.axioms.isEmpty)
+                                          Padding(
+                                            padding: const EdgeInsets.only(
+                                              bottom: 8,
+                                            ),
+                                            child: Text(
+                                              '本步未单独列出公理或定理名称；'
+                                              '若仅为代数整理，可对照上一步式子理解。',
+                                              style: theme.textTheme.bodySmall
+                                                  ?.copyWith(
+                                                color: cs.onSurfaceVariant,
+                                                height: 1.45,
+                                              ),
+                                            ),
+                                          )
+                                        else
+                                          ...s.axioms.map(
+                                            (a) => Padding(
+                                              padding: const EdgeInsets.only(
+                                                bottom: 12,
+                                              ),
+                                              child: Column(
+                                                crossAxisAlignment:
+                                                    CrossAxisAlignment.start,
+                                                children: [
+                                                  if (a.nameZh
+                                                      .trim()
+                                                      .isNotEmpty)
+                                                    SelectableText(
+                                                      a.nameZh.trim(),
+                                                      style: theme
+                                                          .textTheme.titleSmall
+                                                          ?.copyWith(
+                                                        fontWeight:
+                                                            FontWeight.w700,
+                                                      ),
+                                                    ),
+                                                  if (a.detailZh
+                                                      .trim()
+                                                      .isNotEmpty) ...[
+                                                    const SizedBox(height: 4),
+                                                    SelectableText(
+                                                      a.detailZh.trim(),
+                                                      style: theme
+                                                          .textTheme.bodyMedium
+                                                          ?.copyWith(
+                                                        height: 1.45,
+                                                      ),
+                                                    ),
+                                                  ],
+                                                ],
+                                              ),
+                                            ),
+                                          ),
+                                      ],
+                                    ),
+                                  ),
                                 ],
                               ),
                             );

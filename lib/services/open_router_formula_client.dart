@@ -11,10 +11,22 @@ class OpenRouterFormulaException implements Exception {
   String toString() => message;
 }
 
+/// 单步中引用的公理、定义、定理或运算法则（供界面展开查看）。
+class FormulaStepAxiom {
+  const FormulaStepAxiom({required this.nameZh, required this.detailZh});
+  final String nameZh;
+  final String detailZh;
+}
+
 class FormulaSolveStep {
-  const FormulaSolveStep({required this.title, required this.latex});
+  const FormulaSolveStep({
+    required this.title,
+    required this.latex,
+    this.axioms = const [],
+  });
   final String title;
   final String latex;
+  final List<FormulaStepAxiom> axioms;
 }
 
 class FormulaSolveResult {
@@ -109,6 +121,24 @@ class OpenRouterFormulaClient {
       throw OpenRouterFormulaException('未配置 OPENROUTER_API_KEY');
     }
 
+    final axiomItem = <String, dynamic>{
+      'type': 'object',
+      'additionalProperties': false,
+      'properties': <String, dynamic>{
+        'name_zh': <String, dynamic>{
+          'type': 'string',
+          'description':
+              '本步用到的公理、定义、定理或运算法则的简短中文名称（如「等价变形」「洛必达法则」）；勿写整句推导。',
+        },
+        'detail_zh': <String, dynamic>{
+          'type': 'string',
+          'description':
+              '两三句以内中文：说明本步为何可用该依据、作用于式子哪一部分；禁止 LaTeX 与编号列表符号。',
+        },
+      },
+      'required': <String>['name_zh', 'detail_zh'],
+    };
+
     final stepItem = <String, dynamic>{
       'type': 'object',
       'additionalProperties': false,
@@ -124,8 +154,14 @@ class OpenRouterFormulaClient {
               r'本步仅写合法 LaTeX，单行；优先 \( ... \) 包住整段式子，或 \[ ... \]。禁止 array/align。'
               r'\frac 必须 \frac{A}{B} 且 A、B 均带花括号；\sqrt 必须带花括号。可为空。',
         },
+        'axioms': <String, dynamic>{
+          'type': 'array',
+          'description':
+              '本步明确用到的数学依据；与纯数值代入无独立名称时可为空数组，但尽量列出（如「乘法分配律」）。',
+          'items': axiomItem,
+        },
       },
-      'required': <String>['title', 'latex'],
+      'required': <String>['title', 'latex', 'axioms'],
     };
 
     final schema = <String, dynamic>{
@@ -165,6 +201,8 @@ class OpenRouterFormulaClient {
     final instruction = '你是数学解题助手。用户给出的 LaTeX 可能来自 OCR，可能有瑕疵。\n'
         '$hint\n\n'
         '【语言】steps 每项的 title 必须用简体中文；summary_zh 必须用简体中文一段话。\n'
+        '【依据】steps 每项必须含 axioms 数组：列出本步用到的公理/定义/定理/法则（name_zh 短语，'
+        'detail_zh 两三句说明如何应用）；与纯变形无独立名称时可置空数组，但可解时尽量每步至少一条。\n'
         '【公式】steps[].latex 与 formula_explanation_latex：每字段单行；必须用 \\( ... \\) 或 \\[ ... \\]；'
         r'\frac 一律 \frac{A}{B}（禁止 \frac12 这种无花括号写法）；\sqrt{·}；禁止 array/align。不要写句子。'
         '否则渲染会错。\n'
@@ -202,9 +240,23 @@ class OpenRouterFormulaClient {
         if (e is! Map) continue;
         final title = e['title']?.toString() ?? '';
         final lx = e['latex']?.toString() ?? '';
+        final axioms = <FormulaStepAxiom>[];
+        final axiomsRaw = e['axioms'];
+        if (axiomsRaw is List) {
+          for (final a in axiomsRaw) {
+            if (a is! Map) continue;
+            axioms.add(
+              FormulaStepAxiom(
+                nameZh: a['name_zh']?.toString().trim() ?? '',
+                detailZh: a['detail_zh']?.toString().trim() ?? '',
+              ),
+            );
+          }
+        }
         steps.add(FormulaSolveStep(
           title: title,
           latex: LatexDisplayNormalize.forSolveSnippet(lx),
+          axioms: axioms,
         ));
       }
     }

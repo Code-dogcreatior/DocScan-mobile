@@ -35,7 +35,6 @@ part 'camera_scan_page_overlay.dart';
 part 'camera_scan_page_image_tasks.dart';
 part 'camera_scan_page_capture_orchestrator.dart';
 part 'camera_scan_page_mode_actions.dart';
-part 'camera_scan_page_ui_state.dart';
 part 'camera_scan_page_gallery_handlers.dart';
 part 'camera_scan_page_vision_llm.dart';
 
@@ -1166,7 +1165,6 @@ class _CameraScanPageState extends State<CameraScanPage>
 
   @override
   Widget build(BuildContext context) {
-    final ui = _uiStateSnapshot;
     final controller = _controller;
     return Scaffold(
       backgroundColor: Colors.black,
@@ -1198,9 +1196,9 @@ class _CameraScanPageState extends State<CameraScanPage>
                     ),
                   ),
                   const SizedBox(height: 16),
-                  Text(
-                    _hint,
-                    style: const TextStyle(color: Colors.white60, fontSize: 14),
+                  const Text(
+                    '正在准备相机…',
+                    style: TextStyle(color: Colors.white60, fontSize: 14),
                     textAlign: TextAlign.center,
                   ),
                 ],
@@ -1212,52 +1210,7 @@ class _CameraScanPageState extends State<CameraScanPage>
                 builder: (context, _) {
                   return Column(
                     children: [
-                      // ── Hint bar ──
-                      Padding(
-                        padding: const EdgeInsets.fromLTRB(20, 8, 20, 8),
-                        child: AnimatedContainer(
-                          duration: const Duration(milliseconds: 250),
-                          curve: Curves.easeOut,
-                          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-                          decoration: BoxDecoration(
-                            color: _isCapturing
-                                ? AppTokens.cameraSurfaceBusy
-                                : AppTokens.cameraSurface,
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                          child: Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              if (ui.isCapturing) ...[
-                                const SizedBox(
-                                  width: 14,
-                                  height: 14,
-                                  child: CircularProgressIndicator(
-                                    strokeWidth: 2,
-                                    color: AppTokens.cameraForeground,
-                                  ),
-                                ),
-                                const SizedBox(width: 10),
-                              ],
-                              Flexible(
-                                child: Text(
-                                  ui.hint,
-                                  style: const TextStyle(
-                                    color: AppTokens.cameraForeground,
-                                    fontSize: 13,
-                                    fontWeight: FontWeight.w500,
-                                    height: 1.3,
-                                  ),
-                                  maxLines: 2,
-                                  overflow: TextOverflow.ellipsis,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ),
-
-                      // ── Camera preview（横向铺满，纵向按比例裁剪）──
+                      // ── Camera preview（无顶部文案条，预览区更高）──
                       Expanded(
                         child: ClipRRect(
                           borderRadius: BorderRadius.circular(16),
@@ -1295,8 +1248,9 @@ class _CameraScanPageState extends State<CameraScanPage>
                             _BottomActionButton(
                               icon: Icons.photo_library_rounded,
                               label: _galleryActionLabel(),
-                              onTap:
-                                  ui.isCapturing ? null : _pickAndProcessFromGallery,
+                              onTap: _isCapturing
+                                  ? null
+                                  : _pickAndProcessFromGallery,
                             ),
                             // Shutter button
                             _ShutterButton(
