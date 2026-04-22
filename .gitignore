@@ -46,3 +46,4 @@ app.*.map.json
 
 # 本地环境（勿提交密钥与私有 URL）
 env/app.env
+.claude/
