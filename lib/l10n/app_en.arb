@@ -1,0 +1,150 @@
+{
+  "@@locale": "en",
+
+  "appTitle": "DocScan",
+  "appTagline": "Smart document scanner · AI enhanced",
+  "pro": "Pro",
+  "learnMore": "Learn more",
+  "ok": "OK",
+  "cancel": "Cancel",
+  "delete": "Delete",
+  "rename": "Rename",
+  "share": "Share",
+  "save": "Save",
+  "exportAndShare": "Export & share",
+
+  "tabHome": "Home",
+  "tabDocuments": "Documents",
+  "tabTools": "Tools",
+  "tabProfile": "Me",
+  "tabComingSoon": "Coming soon",
+
+  "scanDocument": "Scan document",
+
+  "homeStatsDocsLabel": "Documents",
+  "homeStatsPagesLabel": "Pages",
+  "homeStatsSizeLabel": "Storage",
+  "homeSearchHint": "Search: scan · translate · ID photo · cutout",
+  "homeQuickToolsTitle": "Quick tools",
+  "homeProBannerTitle": "Pro membership · limited time",
+  "homeProBannerSubtitle": "No ads · no watermark · batch OCR · cloud sync",
+  "homeRecentDocsTitle": "Recent documents",
+  "homeRecentDocsViewAll": "View all",
+  "homeRecentDocsEmptyTitle": "Start your first scan",
+  "homeRecentDocsEmptySubtitle": "Tap the camera button or import from gallery",
+
+  "toolScan": "Smart scan",
+  "toolImport": "Import image",
+  "toolIdPhoto": "ID photo",
+  "toolText": "Text OCR",
+  "toolFormula": "Formula OCR",
+  "toolTranslate": "Translate",
+  "toolCutout": "AI cutout",
+  "toolErase": "AI erase",
+  "toolESign": "E-signature",
+  "toolObject": "Object recognition",
+
+  "proSheetTitle": "DocScan Pro",
+  "proFeatureNoAdsTitle": "No ads · distraction-free",
+  "proFeatureNoAdsSubtitle": "Removes inserted ads and onboarding popups",
+  "proFeatureNoWatermarkTitle": "Watermark-free export",
+  "proFeatureNoWatermarkSubtitle": "Export PDFs / share images without branding",
+  "proFeatureBatchOcrTitle": "Batch OCR",
+  "proFeatureBatchOcrSubtitle": "OCR an entire scan in one shot; copy text out",
+  "proFeatureCloudSyncTitle": "Cloud sync (planned)",
+  "proFeatureCloudSyncSubtitle": "Sync recent documents and settings across devices",
+  "proSheetCta": "Coming soon",
+
+  "allDocsTitle": "All documents",
+  "allDocsSearchHint": "Search by title",
+  "allDocsClear": "Clear",
+  "allDocsClearConfirmTitle": "Clear all documents",
+  "allDocsClearConfirmBody": "This will delete every scan record and page file. Cannot be undone.",
+  "allDocsEmpty": "No documents yet",
+  "allDocsEmptyHint": "Tap the camera button below to start scanning",
+  "allDocsNoMatch": "No matches",
+  "allDocsNoMatchHint": "Try different keywords",
+
+  "deleteDocTitle": "Delete document",
+  "deleteDocBody": "Delete \"{title}\"?",
+  "@deleteDocBody": {
+    "placeholders": { "title": { "type": "String" } }
+  },
+
+  "renameDialogTitle": "Rename",
+  "renameDialogHint": "Enter a new document name",
+
+  "docDetailContinueCapture": "Continue capture",
+  "docDetailExportShare": "Export & share",
+  "docDetailExportPdf": "Export PDF",
+  "docDetailExportZip": "Export ZIP (image bundle)",
+  "docDetailExportChooseTitle": "Choose export format",
+  "docDetailPagesAdded": "Page {n} added",
+  "@docDetailPagesAdded": {
+    "placeholders": { "n": { "type": "int" } }
+  },
+  "docDetailPageIndicator": "{current} / {total}",
+  "@docDetailPageIndicator": {
+    "placeholders": {
+      "current": { "type": "int" },
+      "total": { "type": "int" }
+    }
+  },
+  "docDetailEmptyTitle": "Can't open this document",
+  "docDetailEmptyLegacy": "This is a legacy entry with only a thumbnail. Re-scan to create a full document.",
+  "docDetailEmptyMissing": "Page files may have been cleaned up. Delete and re-scan.",
+
+  "toolsSectionScan": "Smart scan",
+  "toolsSectionPdf": "PDF tools",
+  "toolsSectionMore": "More",
+
+  "pdfMergeTitle": "Merge PDF",
+  "pdfMergeSubtitle": "Pick photos from gallery · export as multi-page PDF",
+  "pdfMergeEmpty": "Pick images to start merging",
+  "pdfMergeEmptyHint": "Multi-select supported; pages follow selection order",
+  "pdfMergePickImages": "Pick images",
+  "pdfMergeExportLabel": "Export & share ({n} pages)",
+  "@pdfMergeExportLabel": {
+    "placeholders": { "n": { "type": "int" } }
+  },
+  "pdfMergeExporting": "Processing…",
+
+  "pdfCompressTitle": "Compress PDF",
+  "pdfCompressSubtitle": "Pick a scan · downsample & re-export at smaller size",
+  "pdfCompressEmpty": "No local documents to compress.\nUse the camera to scan a document first.",
+
+  "pdfSplitTitle": "Split PDF",
+  "pdfSplitSubtitle": "Split a document into per-page PDFs · share as one bundle",
+  "pdfSplitDoTitle": "Split & share",
+  "pdfSplitDoneToast": "Split into {n} PDFs",
+  "@pdfSplitDoneToast": {
+    "placeholders": { "n": { "type": "int" } }
+  },
+
+  "pdfWatermarkTitle": "Watermark PDF",
+  "pdfWatermarkSubtitle": "Add a text watermark to every page",
+  "pdfWatermarkInputLabel": "Watermark text",
+  "pdfWatermarkInputHint": "e.g. DocScan / Confidential",
+  "pdfWatermarkExportLabel": "Add watermark & share",
+
+  "pdfPasswordTitle": "Password-protect PDF",
+  "pdfPasswordSubtitle": "Encrypt with password · coming soon",
+  "pdfPasswordPending": "PDF encryption is under development",
+
+  "zipExportTitle": "Bundle as ZIP",
+  "zipExportSubtitle": "Pack all page JPEGs into a single archive",
+  "zipExportEmpty": "No local documents to bundle",
+  "zipExportShareSubject": "DocScan image bundle",
+
+  "moreToolsScanWordExcel": "Scan to Word / Excel",
+  "moreToolsComingSoon": "Coming soon",
+
+  "shareFailed": "Share failed: {error}",
+  "@shareFailed": {
+    "placeholders": { "error": { "type": "String" } }
+  },
+  "exportFailed": "Export failed: {error}",
+  "@exportFailed": {
+    "placeholders": { "error": { "type": "String" } }
+  }
+}

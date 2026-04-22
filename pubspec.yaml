@@ -9,6 +9,10 @@ environment:
 dependencies:
   flutter:
     sdk: flutter
+  flutter_localizations:
+    sdk: flutter
+  intl: any
+  archive: ^4.0.2
   cupertino_icons: ^1.0.8
   camera: ^0.11.1
   image: ^4.2.0
@@ -40,6 +44,7 @@ dev_dependencies:
 
 flutter:
   uses-material-design: true
+  generate: true
   assets:
     - assets/models/fastvit_sa24_h_e_bifpn_256_fp32.onnx
     - assets/models/lcnet050_p_multi_decoder_l3_d64_256_fp32.onnx

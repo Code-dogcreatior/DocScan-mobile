@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
+import 'l10n/app_localizations.dart';
 import 'pages/main_shell_page.dart';
 import 'services/onnx_corner_detector.dart';
 import 'theme/app_theme.dart';
@@ -26,6 +27,8 @@ class DocScanApp extends StatelessWidget {
       theme: AppTheme.light(),
       darkTheme: AppTheme.dark(),
       themeMode: ThemeMode.system,
+      localizationsDelegates: AppL10n.localizationsDelegates,
+      supportedLocales: AppL10n.supportedLocales,
       builder: (context, child) {
         // Keep status-bar icons readable across Light/Dark — matches the
         // scaffold background that surrounds the current page.

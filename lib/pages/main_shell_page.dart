@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../l10n/app_localizations.dart';
 import '../models/camera_capture_mode.dart';
 import '../theme/app_tokens.dart';
 import 'camera_scan_page.dart';
@@ -73,6 +74,7 @@ class _MainShellPageState extends State<MainShellPage> {
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
     final isDark = Theme.of(context).brightness == Brightness.dark;
+    final l = AppL10n.of(context);
 
     return Scaffold(
       body: IndexedStack(
@@ -84,7 +86,7 @@ class _MainShellPageState extends State<MainShellPage> {
         height: 60,
         child: FloatingActionButton(
           onPressed: () => _openCamera(context),
-          tooltip: '扫描文档',
+          tooltip: l.scanDocument,
           elevation: 4,
           shape: const CircleBorder(),
           child: Container(
@@ -114,14 +116,14 @@ class _MainShellPageState extends State<MainShellPage> {
             _TabItem(
               icon: Icons.home_outlined,
               activeIcon: Icons.home_rounded,
-              label: '首页',
+              label: l.tabHome,
               active: _tabIndex == 0,
               onTap: () => _setTab(0),
             ),
             _TabItem(
               icon: Icons.folder_outlined,
               activeIcon: Icons.folder_rounded,
-              label: '文档',
+              label: l.tabDocuments,
               active: _tabIndex == 1,
               onTap: () => _setTab(1),
             ),
@@ -130,14 +132,14 @@ class _MainShellPageState extends State<MainShellPage> {
             _TabItem(
               icon: Icons.build_outlined,
               activeIcon: Icons.build_rounded,
-              label: '工具箱',
+              label: l.tabTools,
               active: _tabIndex == 2,
               onTap: () => _setTab(2),
             ),
             _TabItem(
               icon: Icons.person_outline_rounded,
               activeIcon: Icons.person_rounded,
-              label: '我的',
+              label: l.tabProfile,
               active: _tabIndex == 3,
               onTap: () => _setTab(3),
             ),

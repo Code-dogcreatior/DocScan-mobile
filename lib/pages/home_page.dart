@@ -3,6 +3,7 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 
+import '../l10n/app_localizations.dart';
 import '../models/camera_capture_mode.dart';
 import '../models/recent_document.dart';
 import '../services/pdf_export_service.dart';
@@ -52,7 +53,7 @@ class _HomePageState extends State<HomePage> with RouteAware {
       if (mounted) {
         showAppSnackBar(
           context,
-          message: '此条目为旧版本，只有缩略图，无法分享',
+          message: AppL10n.of(context).docDetailEmptyLegacy,
           tone: AppFeedbackTone.warning,
         );
       }
@@ -68,29 +69,34 @@ class _HomePageState extends State<HomePage> with RouteAware {
       if (!mounted) return;
       await _shareService.shareFile(file, text: doc.title, subject: doc.title);
     } catch (e) {
-      if (mounted) showAppSnackBar(context, message: '分享失败：$e');
+      if (mounted) {
+        showAppSnackBar(
+            context, message: AppL10n.of(context).shareFailed(e.toString()));
+      }
     }
   }
 
   Future<void> _renameDocument(RecentDocument doc) async {
+    final l = AppL10n.of(context);
     final ctrl = TextEditingController(text: doc.title);
     final next = await showDialog<String>(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: const Text('重命名'),
+        title: Text(l.renameDialogTitle),
         content: TextField(
           controller: ctrl,
           autofocus: true,
+          decoration: InputDecoration(hintText: l.renameDialogHint),
           onSubmitted: (v) => Navigator.of(ctx).pop(v.trim()),
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(ctx).pop(),
-            child: const Text('取消'),
+            child: Text(l.cancel),
           ),
           TextButton(
             onPressed: () => Navigator.of(ctx).pop(ctrl.text.trim()),
-            child: const Text('确定'),
+            child: Text(l.ok),
           ),
         ],
       ),
@@ -102,6 +108,7 @@ class _HomePageState extends State<HomePage> with RouteAware {
   }
 
   void _onDocLongPress(RecentDocument doc) {
+    final l = AppL10n.of(context);
     showModalBottomSheet<void>(
       context: context,
       builder: (ctx) => SafeArea(
@@ -110,7 +117,7 @@ class _HomePageState extends State<HomePage> with RouteAware {
           children: [
             ListTile(
               leading: const Icon(Icons.edit_outlined),
-              title: const Text('重命名'),
+              title: Text(l.rename),
               onTap: () {
                 Navigator.of(ctx).pop();
                 _renameDocument(doc);
@@ -118,7 +125,7 @@ class _HomePageState extends State<HomePage> with RouteAware {
             ),
             ListTile(
               leading: const Icon(Icons.ios_share_rounded),
-              title: const Text('分享 PDF'),
+              title: Text(l.share),
               onTap: () {
                 Navigator.of(ctx).pop();
                 _shareDocument(doc);
@@ -127,7 +134,7 @@ class _HomePageState extends State<HomePage> with RouteAware {
             ListTile(
               leading: Icon(Icons.delete_outline_rounded,
                   color: context.palette.danger),
-              title: Text('删除',
+              title: Text(l.delete,
                   style: TextStyle(color: context.palette.danger)),
               onTap: () async {
                 Navigator.of(ctx).pop();
@@ -147,6 +154,13 @@ class _HomePageState extends State<HomePage> with RouteAware {
       showDragHandle: true,
       builder: (ctx) {
         final cs = Theme.of(ctx).colorScheme;
+        final l = AppL10n.of(ctx);
+        final features = <(String, String)>[
+          (l.proFeatureNoAdsTitle, l.proFeatureNoAdsSubtitle),
+          (l.proFeatureNoWatermarkTitle, l.proFeatureNoWatermarkSubtitle),
+          (l.proFeatureBatchOcrTitle, l.proFeatureBatchOcrSubtitle),
+          (l.proFeatureCloudSyncTitle, l.proFeatureCloudSyncSubtitle),
+        ];
         return SafeArea(
           child: Padding(
             padding: const EdgeInsets.fromLTRB(24, 4, 24, 24),
@@ -159,7 +173,7 @@ class _HomePageState extends State<HomePage> with RouteAware {
                     const Icon(Icons.workspace_premium_rounded,
                         color: Color(0xFFFFA000), size: 28),
                     const SizedBox(width: 12),
-                    Text('DocScan Pro',
+                    Text(l.proSheetTitle,
                         style: Theme.of(ctx)
                             .textTheme
                             .titleLarge
@@ -167,7 +181,7 @@ class _HomePageState extends State<HomePage> with RouteAware {
                   ],
                 ),
                 const SizedBox(height: 16),
-                ..._kProFeatures.map(
+                ...features.map(
                   (f) => Padding(
                     padding: const EdgeInsets.symmetric(vertical: 6),
                     child: Row(
@@ -201,7 +215,7 @@ class _HomePageState extends State<HomePage> with RouteAware {
                   child: FilledButton.icon(
                     onPressed: () => Navigator.of(ctx).pop(),
                     icon: const Icon(Icons.schedule_rounded, size: 18),
-                    label: const Text('敬请期待'),
+                    label: Text(l.proSheetCta),
                   ),
                 ),
               ],
@@ -271,13 +285,6 @@ class _HomePageState extends State<HomePage> with RouteAware {
     _Tool(Icons.healing_rounded, 'AI 擦除', 7),
   ];
 
-  /// (标题, 副文) —— Pro 特性展示。
-  static const List<(String, String)> _kProFeatures = [
-    ('去广告 · 无打扰', '全局移除插入广告与引导弹窗'),
-    ('去水印导出', '导出 PDF / 分享图片不带品牌水印'),
-    ('批量 OCR', '一次处理整本多页扫描件，导出可复制文字'),
-    ('云同步（规划中）', '跨设备同步最近文档与设置'),
-  ];
 
   @override
   Widget build(BuildContext context) {
@@ -300,10 +307,12 @@ class _HomePageState extends State<HomePage> with RouteAware {
               ),
             ),
 
-            // ── 搜索栏 (pinned) ────────────────────────────────────
-            SliverPersistentHeader(
-              pinned: true,
-              delegate: _SearchBarDelegate(
+            // ── 搜索栏 ────────────────────────────────────────────
+            // 注意：SliverPersistentHeader(pinned: true) 在当前 Impeller/Vulkan
+            // 后端 + BouncingScrollPhysics 组合下会造成后续 slivers 高度坍缩，
+            // 整个页面只渲染最后一个 sliver。用 SliverToBoxAdapter 包装避让。
+            SliverToBoxAdapter(
+              child: _SearchBar(
                 onTap: () => MainShellPage.jumpToTab(1),
               ),
             ),
@@ -311,7 +320,7 @@ class _HomePageState extends State<HomePage> with RouteAware {
             // ── 快捷工具 ────────────────────────────────────────────
             SliverToBoxAdapter(
               child: _SectionLabel(
-                title: '快捷工具',
+                title: AppL10n.of(context).homeQuickToolsTitle,
                 padding: const EdgeInsets.fromLTRB(20, 20, 20, 10),
               ),
             ),
@@ -345,8 +354,8 @@ class _HomePageState extends State<HomePage> with RouteAware {
             // ── 最近文档 ────────────────────────────────────────────
             SliverToBoxAdapter(
               child: _SectionLabel(
-                title: '最近文档',
-                trailing: '查看全部',
+                title: AppL10n.of(context).homeRecentDocsTitle,
+                trailing: AppL10n.of(context).homeRecentDocsViewAll,
                 onTrailingTap: () => MainShellPage.jumpToTab(1),
                 padding: const EdgeInsets.fromLTRB(20, 24, 20, 10),
               ),
@@ -432,9 +441,9 @@ class _BrandHeader extends StatelessWidget {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      const Text(
-                        'DocScan',
-                        style: TextStyle(
+                      Text(
+                        AppL10n.of(context).appTitle,
+                        style: const TextStyle(
                           color: Colors.white,
                           fontSize: 20,
                           fontWeight: FontWeight.w800,
@@ -442,7 +451,7 @@ class _BrandHeader extends StatelessWidget {
                         ),
                       ),
                       Text(
-                        '智能文档扫描 · AI 增强',
+                        AppL10n.of(context).appTagline,
                         style: TextStyle(
                           color: Colors.white.withValues(alpha: 0.75),
                           fontSize: 12,
@@ -474,15 +483,15 @@ class _BrandHeader extends StatelessWidget {
                           ),
                         ],
                       ),
-                      child: const Row(
+                      child: Row(
                         mainAxisSize: MainAxisSize.min,
                         children: [
-                          Icon(Icons.workspace_premium_rounded,
+                          const Icon(Icons.workspace_premium_rounded,
                               color: Colors.white, size: 14),
-                          SizedBox(width: 4),
+                          const SizedBox(width: 4),
                           Text(
-                            'Pro',
-                            style: TextStyle(
+                            AppL10n.of(context).pro,
+                            style: const TextStyle(
                               color: Colors.white,
                               fontSize: 13,
                               fontWeight: FontWeight.w700,
@@ -504,18 +513,12 @@ class _BrandHeader extends StatelessWidget {
 
 // ── Search bar (pinned persistent header) ────────────────────────────────────
 
-class _SearchBarDelegate extends SliverPersistentHeaderDelegate {
-  _SearchBarDelegate({required this.onTap});
+class _SearchBar extends StatelessWidget {
+  const _SearchBar({required this.onTap});
   final VoidCallback onTap;
 
   @override
-  double get minExtent => 56;
-  @override
-  double get maxExtent => 56;
-
-  @override
-  Widget build(
-      BuildContext context, double shrinkOffset, bool overlapsContent) {
+  Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
     final isDark = Theme.of(context).brightness == Brightness.dark;
     return Container(
@@ -529,31 +532,31 @@ class _SearchBarDelegate extends SliverPersistentHeaderDelegate {
           onTap: onTap,
           child: Padding(
             padding: const EdgeInsets.symmetric(horizontal: 16),
-            child: Row(
-              children: [
-                Icon(Icons.search_rounded,
-                    size: 20, color: cs.onSurfaceVariant),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: Text(
-                    '搜索功能：扫描 · 翻译 · 证件照 · 抠图',
-                    style: TextStyle(
-                      color: cs.onSurfaceVariant,
-                      fontSize: 14,
+            child: SizedBox(
+              height: 40,
+              child: Row(
+                children: [
+                  Icon(Icons.search_rounded,
+                      size: 20, color: cs.onSurfaceVariant),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      AppL10n.of(context).homeSearchHint,
+                      style: TextStyle(
+                        color: cs.onSurfaceVariant,
+                        fontSize: 14,
+                      ),
+                      overflow: TextOverflow.ellipsis,
                     ),
-                    overflow: TextOverflow.ellipsis,
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
           ),
         ),
       ),
     );
   }
-
-  @override
-  bool shouldRebuild(covariant _SearchBarDelegate old) => false;
 }
 
 // ── Section label ─────────────────────────────────────────────────────────────

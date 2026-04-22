@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../l10n/app_localizations.dart';
 import '../widgets/empty_state.dart';
 
 class TabProfilePage extends StatelessWidget {
@@ -7,12 +8,13 @@ class TabProfilePage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l = AppL10n.of(context);
     return Scaffold(
-      appBar: AppBar(title: const Text('我的')),
-      body: const EmptyState(
+      appBar: AppBar(title: Text(l.tabProfile)),
+      body: EmptyState(
         icon: Icons.person_outline_rounded,
-        title: '我的',
-        subtitle: '即将开放，敬请期待',
+        title: l.tabProfile,
+        subtitle: l.tabComingSoon,
       ),
     );
   }

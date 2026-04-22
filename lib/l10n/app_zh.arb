@@ -1,0 +1,150 @@
+{
+  "@@locale": "zh",
+
+  "appTitle": "DocScan",
+  "appTagline": "智能文档扫描 · AI 增强",
+  "pro": "Pro",
+  "learnMore": "了解更多",
+  "ok": "确定",
+  "cancel": "取消",
+  "delete": "删除",
+  "rename": "重命名",
+  "share": "分享",
+  "save": "保存",
+  "exportAndShare": "导出并分享",
+
+  "tabHome": "首页",
+  "tabDocuments": "文档",
+  "tabTools": "工具箱",
+  "tabProfile": "我的",
+  "tabComingSoon": "即将开放，敬请期待",
+
+  "scanDocument": "扫描文档",
+
+  "homeStatsDocsLabel": "份文档",
+  "homeStatsPagesLabel": "页扫描",
+  "homeStatsSizeLabel": "已占用",
+  "homeSearchHint": "搜索功能：扫描 · 翻译 · 证件照 · 抠图",
+  "homeQuickToolsTitle": "快捷工具",
+  "homeProBannerTitle": "Pro 会员限时优惠",
+  "homeProBannerSubtitle": "去广告 · 无水印 · 批量 OCR · 云同步",
+  "homeRecentDocsTitle": "最近文档",
+  "homeRecentDocsViewAll": "查看全部",
+  "homeRecentDocsEmptyTitle": "开始你的第一次扫描",
+  "homeRecentDocsEmptySubtitle": "点击下方相机按钮，或从相册导入",
+
+  "toolScan": "智能扫描",
+  "toolImport": "导入图片",
+  "toolIdPhoto": "证件照",
+  "toolText": "文字识别",
+  "toolFormula": "公式识别",
+  "toolTranslate": "翻译",
+  "toolCutout": "AI 抠图",
+  "toolErase": "AI 擦除",
+  "toolESign": "电子签名",
+  "toolObject": "物体识别",
+
+  "proSheetTitle": "DocScan Pro",
+  "proFeatureNoAdsTitle": "去广告 · 无打扰",
+  "proFeatureNoAdsSubtitle": "全局移除插入广告与引导弹窗",
+  "proFeatureNoWatermarkTitle": "去水印导出",
+  "proFeatureNoWatermarkSubtitle": "导出 PDF / 分享图片不带品牌水印",
+  "proFeatureBatchOcrTitle": "批量 OCR",
+  "proFeatureBatchOcrSubtitle": "一次处理整本多页扫描件，导出可复制文字",
+  "proFeatureCloudSyncTitle": "云同步（规划中）",
+  "proFeatureCloudSyncSubtitle": "跨设备同步最近文档与设置",
+  "proSheetCta": "敬请期待",
+
+  "allDocsTitle": "全部文档",
+  "allDocsSearchHint": "搜索文档标题",
+  "allDocsClear": "清空",
+  "allDocsClearConfirmTitle": "清空全部文档",
+  "allDocsClearConfirmBody": "将删除全部扫描记录与页面文件，此操作不可恢复。",
+  "allDocsEmpty": "还没有文档",
+  "allDocsEmptyHint": "点击下方相机按钮开始扫描",
+  "allDocsNoMatch": "没有匹配结果",
+  "allDocsNoMatchHint": "换个关键词试试",
+
+  "deleteDocTitle": "删除文档",
+  "deleteDocBody": "确定删除「{title}」？",
+  "@deleteDocBody": {
+    "placeholders": { "title": { "type": "String" } }
+  },
+
+  "renameDialogTitle": "重命名",
+  "renameDialogHint": "输入新的文档名称",
+
+  "docDetailContinueCapture": "继续拍摄",
+  "docDetailExportShare": "导出并分享",
+  "docDetailExportPdf": "导出 PDF",
+  "docDetailExportZip": "导出 ZIP（图片包）",
+  "docDetailExportChooseTitle": "选择导出格式",
+  "docDetailPagesAdded": "已添加第 {n} 页",
+  "@docDetailPagesAdded": {
+    "placeholders": { "n": { "type": "int" } }
+  },
+  "docDetailPageIndicator": "{current} / {total} 页",
+  "@docDetailPageIndicator": {
+    "placeholders": {
+      "current": { "type": "int" },
+      "total": { "type": "int" }
+    }
+  },
+  "docDetailEmptyTitle": "无法打开该文档",
+  "docDetailEmptyLegacy": "此文档为旧版本条目，仅有缩略图。请重新扫描生成完整文档。",
+  "docDetailEmptyMissing": "页面文件可能被清理，请删除后重新扫描",
+
+  "toolsSectionScan": "智能扫描",
+  "toolsSectionPdf": "PDF 工具",
+  "toolsSectionMore": "更多",
+
+  "pdfMergeTitle": "PDF 合并",
+  "pdfMergeSubtitle": "从相册选图 · 一键导出为多页 PDF",
+  "pdfMergeEmpty": "从相册选图以开始合并",
+  "pdfMergeEmptyHint": "支持多选，按选择顺序排版",
+  "pdfMergePickImages": "选择图片",
+  "pdfMergeExportLabel": "导出并分享 ({n} 页)",
+  "@pdfMergeExportLabel": {
+    "placeholders": { "n": { "type": "int" } }
+  },
+  "pdfMergeExporting": "处理中…",
+
+  "pdfCompressTitle": "PDF 压缩",
+  "pdfCompressSubtitle": "选择已扫描文档 · 降采样重新导出，体积更小",
+  "pdfCompressEmpty": "暂无可压缩的本地文档。\n请先通过相机扫描生成文档。",
+
+  "pdfSplitTitle": "PDF 拆分",
+  "pdfSplitSubtitle": "把文档按页拆为多个 PDF · 一并打包分享",
+  "pdfSplitDoTitle": "拆分并分享",
+  "pdfSplitDoneToast": "已拆分为 {n} 个 PDF",
+  "@pdfSplitDoneToast": {
+    "placeholders": { "n": { "type": "int" } }
+  },
+
+  "pdfWatermarkTitle": "PDF 加水印",
+  "pdfWatermarkSubtitle": "添加文字水印，导出新的 PDF",
+  "pdfWatermarkInputLabel": "水印文字",
+  "pdfWatermarkInputHint": "如：DocScan / 仅供参考",
+  "pdfWatermarkExportLabel": "添加水印并分享",
+
+  "pdfPasswordTitle": "PDF 密码保护",
+  "pdfPasswordSubtitle": "设置密码后导出 · 即将开放",
+  "pdfPasswordPending": "PDF 加密能力开发中",
+
+  "zipExportTitle": "打包为 ZIP",
+  "zipExportSubtitle": "把所有页 JPEG 打包成压缩包，便于转发原图",
+  "zipExportEmpty": "暂无可打包的本地文档",
+  "zipExportShareSubject": "DocScan 图片包",
+
+  "moreToolsScanWordExcel": "扫描到 Word / Excel",
+  "moreToolsComingSoon": "即将开放，敬请期待",
+
+  "shareFailed": "分享失败：{error}",
+  "@shareFailed": {
+    "placeholders": { "error": { "type": "String" } }
+  },
+  "exportFailed": "导出失败：{error}",
+  "@exportFailed": {
+    "placeholders": { "error": { "type": "String" } }
+  }
+}

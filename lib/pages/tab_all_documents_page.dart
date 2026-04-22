@@ -2,6 +2,7 @@ import 'dart:io';
 
 import 'package:flutter/material.dart';
 
+import '../l10n/app_localizations.dart';
 import '../models/recent_document.dart';
 import '../services/pdf_export_service.dart';
 import '../services/recent_documents_service.dart';
@@ -52,11 +53,12 @@ class _TabAllDocumentsPageState extends State<TabAllDocumentsPage> {
   }
 
   Future<void> _share(RecentDocument doc) async {
+    final l = AppL10n.of(context);
     if (!doc.hasFullPages) {
       if (mounted) {
         showAppSnackBar(
           context,
-          message: '此条目仅有缩略图，无法分享',
+          message: l.docDetailEmptyLegacy,
           tone: AppFeedbackTone.warning,
         );
       }
@@ -72,29 +74,33 @@ class _TabAllDocumentsPageState extends State<TabAllDocumentsPage> {
       if (!mounted) return;
       await _shareService.shareFile(file, text: doc.title, subject: doc.title);
     } catch (e) {
-      if (mounted) showAppSnackBar(context, message: '分享失败：$e');
+      if (mounted) {
+        showAppSnackBar(context, message: l.shareFailed(e.toString()));
+      }
     }
   }
 
   Future<void> _rename(RecentDocument doc) async {
+    final l = AppL10n.of(context);
     final ctrl = TextEditingController(text: doc.title);
     final next = await showDialog<String>(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: const Text('重命名'),
+        title: Text(l.renameDialogTitle),
         content: TextField(
           controller: ctrl,
           autofocus: true,
+          decoration: InputDecoration(hintText: l.renameDialogHint),
           onSubmitted: (v) => Navigator.of(ctx).pop(v.trim()),
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(ctx).pop(),
-            child: const Text('取消'),
+            child: Text(l.cancel),
           ),
           TextButton(
             onPressed: () => Navigator.of(ctx).pop(ctrl.text.trim()),
-            child: const Text('确定'),
+            child: Text(l.ok),
           ),
         ],
       ),
@@ -106,19 +112,21 @@ class _TabAllDocumentsPageState extends State<TabAllDocumentsPage> {
   }
 
   Future<void> _confirmDelete(RecentDocument doc) async {
+    final l = AppL10n.of(context);
     final ok = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: const Text('删除文档'),
-        content: Text('确定删除「${doc.title}」？'),
+        title: Text(l.deleteDocTitle),
+        content: Text(l.deleteDocBody(doc.title)),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(ctx).pop(false),
-            child: const Text('取消'),
+            child: Text(l.cancel),
           ),
           TextButton(
             onPressed: () => Navigator.of(ctx).pop(true),
-            child: Text('删除', style: TextStyle(color: context.palette.danger)),
+            child:
+                Text(l.delete, style: TextStyle(color: context.palette.danger)),
           ),
         ],
       ),
@@ -130,19 +138,21 @@ class _TabAllDocumentsPageState extends State<TabAllDocumentsPage> {
   }
 
   Future<void> _confirmClearAll() async {
+    final l = AppL10n.of(context);
     final ok = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: const Text('清空全部文档'),
-        content: const Text('将删除全部扫描记录与页面文件，此操作不可恢复。'),
+        title: Text(l.allDocsClearConfirmTitle),
+        content: Text(l.allDocsClearConfirmBody),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(ctx).pop(false),
-            child: const Text('取消'),
+            child: Text(l.cancel),
           ),
           TextButton(
             onPressed: () => Navigator.of(ctx).pop(true),
-            child: Text('清空', style: TextStyle(color: context.palette.danger)),
+            child: Text(l.allDocsClear,
+                style: TextStyle(color: context.palette.danger)),
           ),
         ],
       ),
@@ -154,6 +164,7 @@ class _TabAllDocumentsPageState extends State<TabAllDocumentsPage> {
   }
 
   void _showActions(RecentDocument doc) {
+    final l = AppL10n.of(context);
     showModalBottomSheet<void>(
       context: context,
       builder: (ctx) => SafeArea(
@@ -162,7 +173,7 @@ class _TabAllDocumentsPageState extends State<TabAllDocumentsPage> {
           children: [
             ListTile(
               leading: const Icon(Icons.edit_outlined),
-              title: const Text('重命名'),
+              title: Text(l.rename),
               onTap: () {
                 Navigator.of(ctx).pop();
                 _rename(doc);
@@ -170,7 +181,7 @@ class _TabAllDocumentsPageState extends State<TabAllDocumentsPage> {
             ),
             ListTile(
               leading: const Icon(Icons.ios_share_rounded),
-              title: const Text('分享 PDF'),
+              title: Text(l.share),
               onTap: () {
                 Navigator.of(ctx).pop();
                 _share(doc);
@@ -179,7 +190,7 @@ class _TabAllDocumentsPageState extends State<TabAllDocumentsPage> {
             ListTile(
               leading: Icon(Icons.delete_outline_rounded,
                   color: context.palette.danger),
-              title: Text('删除',
+              title: Text(l.delete,
                   style: TextStyle(color: context.palette.danger)),
               onTap: () {
                 Navigator.of(ctx).pop();
@@ -205,12 +216,13 @@ class _TabAllDocumentsPageState extends State<TabAllDocumentsPage> {
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
+    final l = AppL10n.of(context);
     return Scaffold(
       appBar: AppBar(
-        title: const Text('全部文档'),
+        title: Text(l.allDocsTitle),
         actions: [
           IconButton(
-            tooltip: '清空',
+            tooltip: l.allDocsClear,
             icon: const Icon(Icons.delete_sweep_outlined),
             onPressed: _confirmClearAll,
           ),
@@ -227,7 +239,7 @@ class _TabAllDocumentsPageState extends State<TabAllDocumentsPage> {
                 controller: _searchCtrl,
                 onChanged: (v) => setState(() => _query = v.trim()),
                 decoration: InputDecoration(
-                  hintText: '搜索文档标题',
+                  hintText: l.allDocsSearchHint,
                   prefixIcon:
                       Icon(Icons.search_rounded, color: cs.onSurfaceVariant),
                   suffixIcon: _query.isEmpty
@@ -270,9 +282,11 @@ class _TabAllDocumentsPageState extends State<TabAllDocumentsPage> {
                         const SizedBox(height: 60),
                         EmptyState(
                           icon: Icons.folder_open_rounded,
-                          title: all.isEmpty ? '还没有文档' : '没有匹配结果',
-                          subtitle:
-                              all.isEmpty ? '点击下方相机按钮开始扫描' : '换个关键词试试',
+                          title:
+                              all.isEmpty ? l.allDocsEmpty : l.allDocsNoMatch,
+                          subtitle: all.isEmpty
+                              ? l.allDocsEmptyHint
+                              : l.allDocsNoMatchHint,
                         ),
                       ],
                     );
