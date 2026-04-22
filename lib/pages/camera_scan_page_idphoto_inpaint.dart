@@ -18,10 +18,7 @@ extension _CameraIdPhotoAndInpaint on _CameraScanPageState {
       await _pauseCameraPipeline();
       try {
         _setState(() => _hint = '正在生成证件照...');
-        final png = await _mattingService.processCameraJpeg(
-          rawBytes,
-          model: CreatinfMattingModel.highPrecision,
-        );
+        final png = await _mattingService.processCameraJpeg(rawBytes);
         if (!mounted) return;
         await Navigator.of(context).push<void>(
           MaterialPageRoute<void>(
@@ -86,10 +83,7 @@ extension _CameraIdPhotoAndInpaint on _CameraScanPageState {
 
   Future<void> _processIdPhotoFromGallery(Uint8List jpegBytes) async {
     _setState(() => _hint = '正在生成证件照...');
-    final png = await _mattingService.processCameraJpeg(
-      jpegBytes,
-      model: CreatinfMattingModel.highPrecision,
-    );
+    final png = await _mattingService.processCameraJpeg(jpegBytes);
     if (!mounted) return;
     await Navigator.of(context).push<void>(
       MaterialPageRoute<void>(

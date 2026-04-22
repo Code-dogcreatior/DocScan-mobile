@@ -8,6 +8,8 @@ import 'package:path_provider/path_provider.dart';
 
 import '../services/inpaint_service.dart';
 import '../services/share_service.dart';
+import '../theme/app_tokens.dart';
+import '../widgets/app_buttons.dart';
 import '../widgets/app_feedback.dart';
 
 class _MaskStroke {
@@ -51,6 +53,13 @@ class _InpaintEditorPageState extends State<InpaintEditorPage> {
     _decodeSource();
   }
 
+  @override
+  void dispose() {
+    _inpaintService.close();
+    _transform.dispose();
+    super.dispose();
+  }
+
   Future<void> _decodeSource() async {
     final prepared = await _preparePng(widget.imageJpegBytes);
     if (!mounted) return;
@@ -77,39 +86,52 @@ class _InpaintEditorPageState extends State<InpaintEditorPage> {
     return Alignment.center.inscribe(fitted.destination, Offset.zero & boxSize);
   }
 
-  void _showDebugDialog() {
+  void _showDebugSheet() {
     final info = _lastDebugInfo;
     if (info == null) return;
-    showDialog<void>(
+    showModalBottomSheet<void>(
       context: context,
+      isScrollControlled: true,
       builder: (context) {
-        return AlertDialog(
-          title: const Text('发送 Mask 预览'),
-          content: SingleChildScrollView(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                ClipRRect(
-                  borderRadius: BorderRadius.circular(8),
-                  child: Image.memory(
-                    info.binaryMaskPreviewBytes,
-                    fit: BoxFit.contain,
+        final theme = Theme.of(context);
+        final cs = theme.colorScheme;
+        return DraggableScrollableSheet(
+          initialChildSize: 0.65,
+          maxChildSize: 0.9,
+          minChildSize: 0.35,
+          expand: false,
+          builder: (_, controller) {
+            return SingleChildScrollView(
+              controller: controller,
+              padding: const EdgeInsets.fromLTRB(20, 8, 20, 24),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text('发送 Mask 预览',
+                      style: theme.textTheme.titleLarge
+                          ?.copyWith(fontWeight: FontWeight.w700)),
+                  const SizedBox(height: 4),
+                  Text(
+                    '白色区域 = 实际发给后端的待擦除区域',
+                    style: theme.textTheme.bodySmall
+                        ?.copyWith(color: cs.onSurfaceVariant),
                   ),
-                ),
-                const SizedBox(height: 12),
-                Text('尺寸: ${info.uploadMaskWidth} x ${info.uploadMaskHeight}'),
-                Text('有效像素: ${info.maskActivePixels}'),
-                Text('范围: ${info.maskBounds}'),
-              ],
-            ),
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.of(context).pop(),
-              child: const Text('关闭'),
-            ),
-          ],
+                  const SizedBox(height: 16),
+                  ClipRRect(
+                    borderRadius: BorderRadius.circular(AppTokens.radiusSm),
+                    child: Image.memory(
+                      info.binaryMaskPreviewBytes,
+                      fit: BoxFit.contain,
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  _DebugStat(label: '尺寸', value: '${info.uploadMaskWidth} × ${info.uploadMaskHeight}'),
+                  _DebugStat(label: '有效像素', value: '${info.maskActivePixels}'),
+                  _DebugStat(label: '范围', value: info.maskBounds),
+                ],
+              ),
+            );
+          },
         );
       },
     );
@@ -250,14 +272,25 @@ class _InpaintEditorPageState extends State<InpaintEditorPage> {
       return const Scaffold(body: Center(child: CircularProgressIndicator()));
     }
     final showBytes = _currentImageBytes ?? widget.imageJpegBytes;
+    final canvasBg = context.palette.editorCanvas;
     return Scaffold(
+      backgroundColor: canvasBg,
       appBar: AppBar(
+        backgroundColor: canvasBg,
+        foregroundColor: Colors.white,
+        iconTheme: const IconThemeData(color: Colors.white),
+        titleTextStyle: const TextStyle(
+          color: Colors.white,
+          fontSize: 17,
+          fontWeight: FontWeight.w700,
+          letterSpacing: 0.1,
+        ),
         title: const Text('AI 擦除'),
         actions: [
           IconButton(
             tooltip: _moveMode ? '切换到绘制模式' : '切换到移动模式',
             onPressed: () => setState(() => _moveMode = !_moveMode),
-            icon: Icon(_moveMode ? Icons.brush_outlined : Icons.pan_tool_outlined),
+            icon: Icon(_moveMode ? Icons.brush_rounded : Icons.pan_tool_rounded),
           ),
           IconButton(
             tooltip: '清除标记',
@@ -266,7 +299,7 @@ class _InpaintEditorPageState extends State<InpaintEditorPage> {
           ),
           IconButton(
             tooltip: '查看调试信息',
-            onPressed: _lastDebugInfo == null ? null : _showDebugDialog,
+            onPressed: _lastDebugInfo == null ? null : _showDebugSheet,
             icon: const Icon(Icons.bug_report_outlined),
           ),
         ],
@@ -274,37 +307,15 @@ class _InpaintEditorPageState extends State<InpaintEditorPage> {
       body: Column(
         children: [
           Padding(
-            padding: const EdgeInsets.fromLTRB(12, 10, 12, 6),
-            child: Row(
-              children: [
-                const Text('画笔'),
-                Expanded(
-                  child: Slider(
-                    min: 6,
-                    max: 80,
-                    value: _brushSize,
-                    onChanged: (v) => setState(() => _brushSize = v),
-                  ),
-                ),
-                Text('${_brushSize.round()}'),
-                const SizedBox(width: 8),
-                FilledButton.icon(
-                  onPressed: _submitting ? null : _submit,
-                  icon: _submitting
-                      ? const SizedBox(
-                          width: 14,
-                          height: 14,
-                          child: CircularProgressIndicator(strokeWidth: 2),
-                        )
-                      : const Icon(Icons.auto_fix_high_rounded),
-                  label: Text(_submitting ? '处理中' : '开始擦除'),
-                ),
-              ],
+            padding: const EdgeInsets.fromLTRB(16, 10, 16, 10),
+            child: _BrushSlider(
+              value: _brushSize,
+              onChanged: (v) => setState(() => _brushSize = v),
             ),
           ),
           Expanded(
             child: Container(
-              color: Colors.black,
+              color: canvasBg,
               child: InteractiveViewer(
                 transformationController: _transform,
                 panEnabled: _moveMode,
@@ -316,7 +327,8 @@ class _InpaintEditorPageState extends State<InpaintEditorPage> {
                       : (details) {
                           final p = _toScenePoint(details.globalPosition);
                           setState(() {
-                            _activeStroke = _MaskStroke(points: [p], size: _brushSize);
+                            _activeStroke =
+                                _MaskStroke(points: [p], size: _brushSize);
                             _strokes.add(_activeStroke!);
                           });
                         },
@@ -354,63 +366,178 @@ class _InpaintEditorPageState extends State<InpaintEditorPage> {
               ),
             ),
           ),
-          if (_lastDebugInfo != null)
-            Padding(
-              padding: const EdgeInsets.fromLTRB(12, 8, 12, 0),
-              child: DecoratedBox(
-                decoration: BoxDecoration(
-                  color: const Color(0xFFF3F5F7),
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: ExpansionTile(
-                  tilePadding: const EdgeInsets.symmetric(horizontal: 12),
-                  childrenPadding: const EdgeInsets.fromLTRB(12, 0, 12, 12),
-                  title: const Text('发送 Mask 调试图'),
-                  subtitle: const Text('白色区域 = 实际发给后端的待擦除区域'),
-                  children: [
-                    ClipRRect(
-                      borderRadius: BorderRadius.circular(8),
-                      child: Image.memory(
-                        _lastDebugInfo!.binaryMaskPreviewBytes,
-                        fit: BoxFit.contain,
+        ],
+      ),
+      bottomNavigationBar: Container(
+        color: canvasBg,
+        child: SafeArea(
+          top: false,
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(16, 12, 16, 14),
+            child: _hasResult
+                ? Row(
+                    children: [
+                      Expanded(
+                        child: _DarkSecondaryButton(
+                          label: _saving ? '保存中…' : '保存到相册',
+                          icon: Icons.save_alt_rounded,
+                          onPressed: _saving ? null : _saveResult,
+                          loading: _saving,
+                        ),
                       ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: PrimaryActionButton(
+                          label: '分享',
+                          icon: Icons.ios_share_rounded,
+                          onPressed: _shareResult,
+                        ),
+                      ),
+                    ],
+                  )
+                : SizedBox(
+                    width: double.infinity,
+                    child: PrimaryActionButton(
+                      label: _submitting ? '处理中…' : '开始擦除',
+                      icon: Icons.auto_fix_high_rounded,
+                      loading: _submitting,
+                      onPressed: _submit,
                     ),
-                    const SizedBox(height: 8),
-                    Text(
-                      '尺寸 ${_lastDebugInfo!.uploadMaskWidth} x ${_lastDebugInfo!.uploadMaskHeight}'
-                      '  有效像素 ${_lastDebugInfo!.maskActivePixels}',
-                    ),
-                    Text('范围 ${_lastDebugInfo!.maskBounds}'),
-                  ],
-                ),
+                  ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _BrushSlider extends StatelessWidget {
+  const _BrushSlider({required this.value, required this.onChanged});
+  final double value;
+  final ValueChanged<double> onChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.fromLTRB(14, 6, 14, 6),
+      decoration: BoxDecoration(
+        color: Colors.white.withValues(alpha: 0.08),
+        borderRadius: BorderRadius.circular(AppTokens.radiusPill),
+        border: Border.all(color: Colors.white.withValues(alpha: 0.12)),
+      ),
+      child: Row(
+        children: [
+          const Icon(Icons.brush_rounded, size: 18, color: Colors.white70),
+          const SizedBox(width: 8),
+          Expanded(
+            child: SliderTheme(
+              data: SliderTheme.of(context).copyWith(
+                activeTrackColor: Colors.white,
+                inactiveTrackColor: Colors.white.withValues(alpha: 0.2),
+                thumbColor: Colors.white,
+                overlayColor: Colors.white.withValues(alpha: 0.12),
+                trackHeight: 3,
+              ),
+              child: Slider(
+                min: 6,
+                max: 80,
+                value: value,
+                onChanged: onChanged,
               ),
             ),
-          if (_hasResult)
-            SafeArea(
-              top: false,
-              child: Padding(
-                padding: const EdgeInsets.fromLTRB(12, 8, 12, 14),
-                child: Row(
-                  children: [
-                    Expanded(
-                      child: OutlinedButton.icon(
-                        onPressed: _saving ? null : _saveResult,
-                        icon: const Icon(Icons.save_alt_rounded),
-                        label: Text(_saving ? '保存中…' : '保存到相册'),
-                      ),
-                    ),
-                    const SizedBox(width: 10),
-                    Expanded(
-                      child: FilledButton.icon(
-                        onPressed: _shareResult,
-                        icon: const Icon(Icons.ios_share_outlined),
-                        label: const Text('分享'),
-                      ),
-                    ),
-                  ],
-                ),
+          ),
+          Container(
+            width: 36,
+            alignment: Alignment.center,
+            child: Text(
+              '${value.round()}',
+              style: const TextStyle(
+                color: Colors.white,
+                fontWeight: FontWeight.w600,
+                fontSize: 13,
               ),
             ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// Outlined secondary button on a dark canvas — OutlinedButton alone picks up
+/// light theme defaults that read badly against the editor background.
+class _DarkSecondaryButton extends StatelessWidget {
+  const _DarkSecondaryButton({
+    required this.label,
+    required this.onPressed,
+    this.icon,
+    this.loading = false,
+  });
+
+  final String label;
+  final VoidCallback? onPressed;
+  final IconData? icon;
+  final bool loading;
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      width: double.infinity,
+      child: OutlinedButton(
+        onPressed: loading ? null : onPressed,
+        style: OutlinedButton.styleFrom(
+          foregroundColor: Colors.white,
+          side: BorderSide(color: Colors.white.withValues(alpha: 0.4)),
+          backgroundColor: Colors.white.withValues(alpha: 0.06),
+        ),
+        child: loading
+            ? const SizedBox(
+                width: 18,
+                height: 18,
+                child: CircularProgressIndicator(
+                  strokeWidth: 2.4,
+                  valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                ),
+              )
+            : Row(
+                mainAxisSize: MainAxisSize.min,
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  if (icon != null) ...[
+                    Icon(icon, size: 18),
+                    const SizedBox(width: 8),
+                  ],
+                  Text(label),
+                ],
+              ),
+      ),
+    );
+  }
+}
+
+class _DebugStat extends StatelessWidget {
+  const _DebugStat({required this.label, required this.value});
+  final String label;
+  final String value;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 6),
+      child: Row(
+        children: [
+          SizedBox(
+            width: 72,
+            child: Text(label,
+                style: theme.textTheme.bodySmall
+                    ?.copyWith(color: theme.colorScheme.onSurfaceVariant)),
+          ),
+          Expanded(
+            child: Text(value,
+                style: theme.textTheme.bodyMedium
+                    ?.copyWith(fontWeight: FontWeight.w600)),
+          ),
         ],
       ),
     );

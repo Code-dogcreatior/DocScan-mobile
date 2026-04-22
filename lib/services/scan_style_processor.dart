@@ -42,14 +42,12 @@ class ScanStyleProcessor {
     final origR = Float32List(w * h);
     final origG = Float32List(w * h);
     final origB = Float32List(w * h);
-    for (var y = 0; y < h; y++) {
-      for (var x = 0; x < w; x++) {
-        final i = y * w + x;
-        final p = bgrLike.getPixel(x, y);
-        origR[i] = p.r.toDouble();
-        origG[i] = p.g.toDouble();
-        origB[i] = p.b.toDouble();
-      }
+    var i = 0;
+    for (final p in bgrLike) {
+      origR[i] = p.r.toDouble();
+      origG[i] = p.g.toDouble();
+      origB[i] = p.b.toDouble();
+      i++;
     }
 
     // 2. 降采样计算背景图
@@ -481,16 +479,14 @@ class ScanStyleProcessor {
 
   img.Image _floatRgbToImage(Float32List r, Float32List g, Float32List b, int w, int h) {
     final out = img.Image(width: w, height: h);
-    for (var y = 0; y < h; y++) {
-      for (var x = 0; x < w; x++) {
-        final i = y * w + x;
-        out.setPixelRgb(
-          x, y,
-          r[i].round().clamp(0, 255),
-          g[i].round().clamp(0, 255),
-          b[i].round().clamp(0, 255),
-        );
-      }
+    var i = 0;
+    for (final p in out) {
+      p.setRgb(
+        r[i].round().clamp(0, 255),
+        g[i].round().clamp(0, 255),
+        b[i].round().clamp(0, 255),
+      );
+      i++;
     }
     return out;
   }

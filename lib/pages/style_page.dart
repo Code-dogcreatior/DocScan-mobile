@@ -4,7 +4,10 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:path_provider/path_provider.dart';
 
+import '../services/recent_documents_service.dart';
 import '../services/scan_style_processor.dart';
+import '../theme/app_tokens.dart';
+import '../widgets/app_buttons.dart';
 import '../widgets/app_feedback.dart';
 import 'scan_document_page.dart';
 
@@ -64,11 +67,20 @@ class _StylePageState extends State<StylePage> {
       '${dir.path}/scan_${DateTime.now().millisecondsSinceEpoch}.jpg',
     );
     await file.writeAsBytes(bytes);
+    await RecentDocumentsService.save(pages: [bytes]);
     if (!mounted) return;
     showAppSnackBar(
       context,
       message: '已保存至 ${file.path}',
       icon: Icons.check_circle_outline,
+    );
+  }
+
+  void _openMultiPage() {
+    Navigator.of(context).push<void>(
+      MaterialPageRoute<void>(
+        builder: (_) => ScanDocumentPage(initialPageJpegBytes: _bytesToShow),
+      ),
     );
   }
 
@@ -80,68 +92,14 @@ class _StylePageState extends State<StylePage> {
       appBar: AppBar(title: const Text('扫描结果')),
       body: Column(
         children: [
-          // ── Style selector ──
           Padding(
-            padding: const EdgeInsets.fromLTRB(20, 16, 20, 0),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  '显示风格',
-                  style: theme.textTheme.titleSmall?.copyWith(
-                    fontWeight: FontWeight.w700,
-                    color: cs.onSurfaceVariant,
-                  ),
-                ),
-                const SizedBox(height: 10),
-                SizedBox(
-                  width: double.infinity,
-                  child: SegmentedButton<_StyleDisplay>(
-                    segments: const [
-                      ButtonSegment<_StyleDisplay>(
-                        value: _StyleDisplay.original,
-                        label: Text('原图'),
-                        icon: Icon(Icons.image_outlined, size: 18),
-                      ),
-                      ButtonSegment<_StyleDisplay>(
-                        value: _StyleDisplay.smartHd,
-                        label: Text('智能高清'),
-                        icon: Icon(Icons.auto_fix_high_outlined, size: 18),
-                      ),
-                    ],
-                    selected: {_mode},
-                    onSelectionChanged: _onDisplayModeChanged,
-                  ),
-                ),
-                if (_mode == _StyleDisplay.smartHd) ...[
-                  const SizedBox(height: 8),
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                    decoration: BoxDecoration(
-                      color: cs.primaryContainer.withValues(alpha: 0.3),
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    child: Row(
-                      children: [
-                        Icon(Icons.info_outline, size: 14, color: cs.primary),
-                        const SizedBox(width: 8),
-                        Expanded(
-                          child: Text(
-                            '自适应背景去除 · 智能锐化增强',
-                            style: theme.textTheme.bodySmall?.copyWith(
-                              color: cs.onSurfaceVariant,
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ],
-              ],
+            padding: const EdgeInsets.fromLTRB(20, 12, 20, 0),
+            child: _StyleSelector(
+              mode: _mode,
+              onChanged: _onDisplayModeChanged,
+              processing: _applyingSmartHd,
             ),
           ),
-
-          // ── Image preview ──
           Expanded(
             child: Padding(
               padding: const EdgeInsets.all(16),
@@ -151,17 +109,15 @@ class _StylePageState extends State<StylePage> {
                   Center(
                     child: Container(
                       decoration: BoxDecoration(
-                        borderRadius: BorderRadius.circular(12),
-                        boxShadow: [
-                          BoxShadow(
-                            color: Colors.black.withValues(alpha: 0.15),
-                            blurRadius: 20,
-                            offset: const Offset(0, 8),
-                          ),
-                        ],
+                        borderRadius: BorderRadius.circular(AppTokens.radiusMd),
+                        color: cs.surfaceContainerHighest,
+                        boxShadow: AppTokens.elev2,
+                        border: Border.all(
+                          color: cs.outlineVariant.withValues(alpha: 0.5),
+                        ),
                       ),
                       child: ClipRRect(
-                        borderRadius: BorderRadius.circular(12),
+                        borderRadius: BorderRadius.circular(AppTokens.radiusMd),
                         child: InteractiveViewer(
                           minScale: 0.5,
                           maxScale: 4.0,
@@ -172,33 +128,42 @@ class _StylePageState extends State<StylePage> {
                   ),
                   if (_applyingSmartHd)
                     Positioned.fill(
-                      child: Container(
-                        decoration: BoxDecoration(
-                          color: Colors.black38,
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        child: Center(
-                          child: Column(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              SizedBox(
-                                width: 36,
-                                height: 36,
-                                child: CircularProgressIndicator(
-                                  strokeWidth: 3,
-                                  color: cs.primary,
+                      child: ClipRRect(
+                        borderRadius:
+                            BorderRadius.circular(AppTokens.radiusMd),
+                        child: Container(
+                          color: Colors.black.withValues(alpha: 0.45),
+                          alignment: Alignment.center,
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 20, vertical: 16),
+                            decoration: BoxDecoration(
+                              color: cs.surface,
+                              borderRadius:
+                                  BorderRadius.circular(AppTokens.radiusMd),
+                              boxShadow: AppTokens.elev3,
+                            ),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                SizedBox(
+                                  width: 22,
+                                  height: 22,
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 2.6,
+                                    color: cs.primary,
+                                  ),
                                 ),
-                              ),
-                              const SizedBox(height: 14),
-                              const Text(
-                                '正在处理…',
-                                style: TextStyle(
-                                  color: Colors.white,
-                                  fontWeight: FontWeight.w600,
-                                  fontSize: 15,
+                                const SizedBox(width: 14),
+                                Text(
+                                  '智能高清处理中…',
+                                  style:
+                                      theme.textTheme.titleSmall?.copyWith(
+                                    fontWeight: FontWeight.w600,
+                                  ),
                                 ),
-                              ),
-                            ],
+                              ],
+                            ),
                           ),
                         ),
                       ),
@@ -207,45 +172,107 @@ class _StylePageState extends State<StylePage> {
               ),
             ),
           ),
-
-          // ── Save button ──
-          SafeArea(
-            top: false,
-            child: Padding(
-              padding: const EdgeInsets.fromLTRB(20, 4, 20, 16),
-              child: Row(
-                children: [
-                  Expanded(
-                    child: OutlinedButton.icon(
-                      onPressed: _applyingSmartHd ? null : _save,
-                      icon: const Icon(Icons.save_rounded),
-                      label: const Text('保存结果'),
-                    ),
-                  ),
-                  const SizedBox(width: 10),
-                  Expanded(
-                    child: FilledButton.icon(
-                      onPressed: _applyingSmartHd
-                          ? null
-                          : () {
-                              Navigator.of(context).push<void>(
-                                MaterialPageRoute<void>(
-                                  builder: (_) => ScanDocumentPage(
-                                    initialPageJpegBytes: _bytesToShow,
-                                  ),
-                                ),
-                              );
-                            },
-                      icon: const Icon(Icons.picture_as_pdf_outlined),
-                      label: const Text('多页PDF'),
-                    ),
-                  ),
-                ],
-              ),
-            ),
+        ],
+      ),
+      bottomNavigationBar: BottomActionBar(
+        children: [
+          SecondaryActionButton(
+            label: '保存单张',
+            icon: Icons.save_rounded,
+            onPressed: _applyingSmartHd ? null : _save,
+          ),
+          PrimaryActionButton(
+            label: '多页 PDF',
+            icon: Icons.picture_as_pdf_outlined,
+            onPressed: _applyingSmartHd ? null : _openMultiPage,
           ),
         ],
       ),
+    );
+  }
+}
+
+class _StyleSelector extends StatelessWidget {
+  const _StyleSelector({
+    required this.mode,
+    required this.onChanged,
+    required this.processing,
+  });
+
+  final _StyleDisplay mode;
+  final ValueChanged<Set<_StyleDisplay>> onChanged;
+  final bool processing;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final cs = theme.colorScheme;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          '显示风格',
+          style: theme.textTheme.labelLarge?.copyWith(
+            fontWeight: FontWeight.w700,
+            color: cs.onSurfaceVariant,
+            letterSpacing: 0.2,
+          ),
+        ),
+        const SizedBox(height: 10),
+        SizedBox(
+          width: double.infinity,
+          child: SegmentedButton<_StyleDisplay>(
+            style: ButtonStyle(
+              visualDensity: VisualDensity.comfortable,
+              shape: WidgetStatePropertyAll(
+                RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(AppTokens.radiusSm),
+                ),
+              ),
+            ),
+            segments: const [
+              ButtonSegment<_StyleDisplay>(
+                value: _StyleDisplay.original,
+                label: Text('原图'),
+                icon: Icon(Icons.image_outlined, size: 18),
+              ),
+              ButtonSegment<_StyleDisplay>(
+                value: _StyleDisplay.smartHd,
+                label: Text('智能高清'),
+                icon: Icon(Icons.auto_fix_high_outlined, size: 18),
+              ),
+            ],
+            selected: {mode},
+            onSelectionChanged: processing ? null : onChanged,
+          ),
+        ),
+        if (mode == _StyleDisplay.smartHd) ...[
+          const SizedBox(height: 10),
+          Container(
+            padding:
+                const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+            decoration: BoxDecoration(
+              color: cs.primaryContainer.withValues(alpha: 0.35),
+              borderRadius: BorderRadius.circular(AppTokens.radiusSm),
+            ),
+            child: Row(
+              children: [
+                Icon(Icons.auto_awesome_rounded,
+                    size: 16, color: cs.primary),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    '自适应背景去除 · 智能锐化增强',
+                    style: theme.textTheme.bodySmall?.copyWith(
+                      color: cs.onSurfaceVariant,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ],
     );
   }
 }

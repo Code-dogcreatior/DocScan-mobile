@@ -18,7 +18,7 @@ Future<_DecodeTaskResult?> _decodeAndBakeTask(_DecodeTaskArgs args) async {
 }
 
 Future<Uint8List> _encodeJpegTask(img.Image image) async {
-  return Uint8List.fromList(img.encodeJpg(image, quality: 95));
+  return Uint8List.fromList(img.encodeJpg(image, quality: 90));
 }
 
 class _CropTaskArgs {

@@ -71,7 +71,7 @@ class PerspectiveCropper {
         out.setPixelRgba(x, y, rgba[0], rgba[1], rgba[2], rgba[3]);
       }
     }
-    return Uint8List.fromList(img.encodeJpg(out, quality: 98));
+    return Uint8List.fromList(img.encodeJpg(out, quality: 90));
   }
 
   double _distance(CornerPoint a, CornerPoint b) {

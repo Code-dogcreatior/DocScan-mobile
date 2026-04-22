@@ -3,7 +3,10 @@ import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:gal/gal.dart';
 
+import '../theme/app_tokens.dart';
+import '../widgets/app_buttons.dart';
 import '../widgets/app_feedback.dart';
+import '../widgets/checkerboard_painter.dart';
 
 /// AI 抠图结果预览（PNG 含 alpha，底层棋盘格便于查看透明区域）。
 class MattingResultPreviewPage extends StatefulWidget {
@@ -85,7 +88,7 @@ class _MattingResultPreviewPageState extends State<MattingResultPreviewPage> {
                     width: 20,
                     height: 20,
                     child: CircularProgressIndicator(
-                      strokeWidth: 2,
+                      strokeWidth: 2.4,
                       color: cs.primary,
                     ),
                   )
@@ -95,24 +98,24 @@ class _MattingResultPreviewPageState extends State<MattingResultPreviewPage> {
       ),
       body: Column(
         children: [
-          // ── Hint ──
           Padding(
             padding: const EdgeInsets.fromLTRB(20, 12, 20, 8),
             child: Container(
               padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
               decoration: BoxDecoration(
-                color: cs.primaryContainer.withValues(alpha: 0.3),
-                borderRadius: BorderRadius.circular(10),
+                color: context.palette.infoContainer,
+                borderRadius: BorderRadius.circular(AppTokens.radiusSm),
               ),
               child: Row(
                 children: [
-                  Icon(Icons.touch_app_outlined, size: 16, color: cs.primary),
+                  Icon(Icons.touch_app_rounded,
+                      size: 16, color: context.palette.info),
                   const SizedBox(width: 10),
                   Expanded(
                     child: Text(
                       '双指缩放查看透明边缘细节',
                       style: theme.textTheme.bodySmall?.copyWith(
-                        color: cs.onSurfaceVariant,
+                        color: context.palette.onInfoContainer,
                       ),
                     ),
                   ),
@@ -120,85 +123,51 @@ class _MattingResultPreviewPageState extends State<MattingResultPreviewPage> {
               ),
             ),
           ),
-
-          // ── Preview ──
           Expanded(
             child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16),
-              child: ClipRRect(
-                borderRadius: BorderRadius.circular(12),
-                child: LayoutBuilder(
-                  builder: (context, constraints) {
-                    return Stack(
-                      fit: StackFit.expand,
-                      children: [
-                        CustomPaint(
-                          size: Size(
-                              constraints.maxWidth, constraints.maxHeight),
-                          painter: const _CheckerboardPainter(cell: 14),
-                        ),
-                        Center(
-                          child: InteractiveViewer(
-                            minScale: 0.5,
-                            maxScale: 5,
-                            child: Image.memory(
-                              widget.pngBytes,
-                              fit: BoxFit.contain,
-                            ),
+              padding: const EdgeInsets.fromLTRB(16, 4, 16, 0),
+              child: Container(
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(AppTokens.radiusMd),
+                  border: Border.all(
+                    color: cs.outlineVariant.withValues(alpha: 0.5),
+                  ),
+                  boxShadow: AppTokens.elev1,
+                ),
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(AppTokens.radiusMd),
+                  child: Stack(
+                    fit: StackFit.expand,
+                    children: [
+                      const CheckerboardBackground(cellSize: 14),
+                      Center(
+                        child: InteractiveViewer(
+                          minScale: 0.5,
+                          maxScale: 5,
+                          child: Image.memory(
+                            widget.pngBytes,
+                            fit: BoxFit.contain,
                           ),
                         ),
-                      ],
-                    );
-                  },
-                ),
-              ),
-            ),
-          ),
-
-          // ── Save button ──
-          SafeArea(
-            top: false,
-            child: Padding(
-              padding: const EdgeInsets.fromLTRB(20, 12, 20, 16),
-              child: SizedBox(
-                width: double.infinity,
-                child: FilledButton.icon(
-                  onPressed: _saving ? null : _saveToGallery,
-                  icon: const Icon(Icons.download_rounded),
-                  label: Text(_saving ? '保存中…' : '保存到相册'),
+                      ),
+                    ],
+                  ),
                 ),
               ),
             ),
           ),
         ],
       ),
+      bottomNavigationBar: BottomActionBar(
+        children: [
+          PrimaryActionButton(
+            label: _saving ? '保存中…' : '保存到相册',
+            icon: Icons.download_rounded,
+            loading: _saving,
+            onPressed: _saveToGallery,
+          ),
+        ],
+      ),
     );
   }
-}
-
-class _CheckerboardPainter extends CustomPainter {
-  const _CheckerboardPainter({this.cell = 10});
-
-  final double cell;
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    final light = Paint()..color = const Color(0xFFF0F0F0);
-    final dark = Paint()..color = const Color(0xFFDCDCDC);
-    var y = 0.0;
-    while (y < size.height) {
-      var x = 0.0;
-      while (x < size.width) {
-        final ix = (x / cell).floor();
-        final iy = (y / cell).floor();
-        final paint = (ix + iy).isEven ? light : dark;
-        canvas.drawRect(Rect.fromLTWH(x, y, cell, cell), paint);
-        x += cell;
-      }
-      y += cell;
-    }
-  }
-
-  @override
-  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
 }

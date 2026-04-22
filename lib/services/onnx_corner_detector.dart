@@ -13,6 +13,11 @@ import '../models/corner_point.dart';
 /// 预览流用轻量 lcnet（与 [flutter_reference/point/infer.py] 一致），
 /// 静态图仍用 fastvit heatmap（精度更高）。
 class OnnxCornerDetector {
+  OnnxCornerDetector._();
+
+  /// 进程级单例：OrtSession 加载一次，跨页面复用，避免每次进相机重复 ~70ms 模型加载。
+  static final OnnxCornerDetector instance = OnnxCornerDetector._();
+
   static const int _modelInputSize = 256;
   static const double _heatmapThreshold = 0.3;
 
@@ -20,6 +25,8 @@ class OnnxCornerDetector {
   /// 与预览里 LCNet 日志里的 `1920x1080` **无关**——那是 `CameraImage` 缓冲区尺寸；LCNet 始终从该缓冲区 **双线性采样到 256×256** 再推理。
   /// 调小可加快 FastViT、略降角点精度；调大更准但更慢。
   static const int _stillMaxLongEdge = 320;
+
+  Future<void>? _initFuture;
 
   OrtSession? _ortSession;
   OrtSessionOptions? _ortSessionOptions;
@@ -40,7 +47,9 @@ class OnnxCornerDetector {
   static String _fmtUs(int us) =>
       us <= 0 ? '0.0' : (us / 1000.0).toStringAsFixed(1);
 
-  Future<void> init() async {
+  Future<void> init() => _initFuture ??= _initOnce();
+
+  Future<void> _initOnce() async {
     OrtEnv.instance.init();
     final providers = OrtEnv.instance.availableProviders();
     debugPrint('[OnnxCornerDetector] available providers: $providers');
@@ -352,22 +361,27 @@ class OnnxCornerDetector {
       _lcnetPointsOutputName!,
       _lcnetHasObjOutputName!,
     ];
-    final outputs =
-        await (_lcnetSession!.runAsync(
-              runOptions,
-              <String, OrtValue>{_lcnetInputName!: inputTensor},
-              requestedOutputs,
-            ) ??
-            Future<List<OrtValue?>>.value(
-              _lcnetSession!.run(
+    final List<OrtValue?> outputs;
+    final int ortUs;
+    try {
+      outputs =
+          await (_lcnetSession!.runAsync(
                 runOptions,
                 <String, OrtValue>{_lcnetInputName!: inputTensor},
                 requestedOutputs,
-              ),
-            ));
-    final ortUs = sw.elapsedMicroseconds;
-    inputTensor.release();
-    runOptions.release();
+              ) ??
+              Future<List<OrtValue?>>.value(
+                _lcnetSession!.run(
+                  runOptions,
+                  <String, OrtValue>{_lcnetInputName!: inputTensor},
+                  requestedOutputs,
+                ),
+              ));
+      ortUs = sw.elapsedMicroseconds;
+    } finally {
+      inputTensor.release();
+      runOptions.release();
+    }
 
     double? hasObjScore;
     List<double>? pointsFlat;
@@ -568,21 +582,26 @@ class OnnxCornerDetector {
     final requestedOutputs = <String>[
       _heatmapOutputName ?? _outputNames!.first,
     ];
-    final outputs =
-        await (_ortSession!.runAsync(runOptions, <String, OrtValue>{
-              _inputName!: inputTensor,
-            }, requestedOutputs) ??
-            Future<List<OrtValue?>>.value(
-              _ortSession!.run(runOptions, <String, OrtValue>{
+    final List<OrtValue?> outputs;
+    final int ortUs;
+    try {
+      outputs =
+          await (_ortSession!.runAsync(runOptions, <String, OrtValue>{
                 _inputName!: inputTensor,
-              }, requestedOutputs),
-            ));
-    final ortUs = sw.elapsedMicroseconds;
+              }, requestedOutputs) ??
+              Future<List<OrtValue?>>.value(
+                _ortSession!.run(runOptions, <String, OrtValue>{
+                  _inputName!: inputTensor,
+                }, requestedOutputs),
+              ));
+      ortUs = sw.elapsedMicroseconds;
+    } finally {
+      inputTensor.release();
+      runOptions.release();
+    }
     sw
       ..reset()
       ..start();
-    inputTensor.release();
-    runOptions.release();
     if (outputs.isEmpty) {
       return (
         result: const CornerDetectionResult(
@@ -988,7 +1007,9 @@ class OnnxCornerDetector {
     return [...sorted.sublist(start), ...sorted.sublist(0, start)];
   }
 
-  Future<void> dispose() async {
+  /// 释放进程级 OrtSession。仅在应用确需归还原生内存（如 low-memory 回调）时调用。
+  /// 正常页面生命周期无需调，singleton 常驻复用。
+  Future<void> releaseAll() async {
     try {
       _lcnetSession?.release();
       _lcnetSession = null;
@@ -999,6 +1020,7 @@ class OnnxCornerDetector {
       _ortSessionOptions?.release();
       _ortSessionOptions = null;
       _cameraPreprocessCache = null;
+      _initFuture = null;
     } catch (_) {}
   }
 }

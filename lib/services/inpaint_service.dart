@@ -124,7 +124,7 @@ class InpaintService {
   Future<Uint8List> process({
     required Uint8List imageBytes,
     required Uint8List maskBytes,
-    Duration timeout = const Duration(seconds: 180),
+    Duration timeout = const Duration(seconds: 60),
     String? inpaintApiBaseOverride,
   }) async {
     final base = resolvedBaseUrl(override: inpaintApiBaseOverride);
@@ -269,25 +269,28 @@ class InpaintService {
 
   img.Image _normalizeMask(img.Image input) {
     final out = img.Image(width: input.width, height: input.height, numChannels: 4);
-    for (var y = 0; y < input.height; y++) {
-      for (var x = 0; x < input.width; x++) {
-        final p = input.getPixel(x, y);
-        // 保留抗锯齿灰度边缘，但忽略 alpha：
-        // 黑底背景本身 alpha=255，若把 alpha 计入会把整张图都误判为有效区域。
-        final v = p.r > p.g ? (p.r > p.b ? p.r.toInt() : p.b.toInt()) : (p.g > p.b ? p.g.toInt() : p.b.toInt());
-        out.setPixelRgba(x, y, v, v, v, 255);
-      }
+    final srcIter = input.iterator;
+    for (final dst in out) {
+      if (!srcIter.moveNext()) break;
+      final p = srcIter.current;
+      // 保留抗锯齿灰度边缘，但忽略 alpha：
+      // 黑底背景本身 alpha=255，若把 alpha 计入会把整张图都误判为有效区域。
+      final r = p.r;
+      final g = p.g;
+      final b = p.b;
+      final v = r > g ? (r > b ? r : b) : (g > b ? g : b);
+      dst.setRgba(v, v, v, 255);
     }
     return out;
   }
 
   img.Image _buildBinaryMaskPreview(img.Image input) {
     final out = img.Image(width: input.width, height: input.height, numChannels: 4);
-    for (var y = 0; y < input.height; y++) {
-      for (var x = 0; x < input.width; x++) {
-        final v = input.getPixel(x, y).r > 0 ? 255 : 0;
-        out.setPixelRgba(x, y, v, v, v, 255);
-      }
+    final srcIter = input.iterator;
+    for (final dst in out) {
+      if (!srcIter.moveNext()) break;
+      final v = srcIter.current.r > 0 ? 255 : 0;
+      dst.setRgba(v, v, v, 255);
     }
     return out;
   }
@@ -298,15 +301,15 @@ class InpaintService {
     var minY = mask.height;
     var maxX = -1;
     var maxY = -1;
-    for (var y = 0; y < mask.height; y++) {
-      for (var x = 0; x < mask.width; x++) {
-        if (mask.getPixel(x, y).r > 0) {
-          activePixels++;
-          if (x < minX) minX = x;
-          if (y < minY) minY = y;
-          if (x > maxX) maxX = x;
-          if (y > maxY) maxY = y;
-        }
+    for (final p in mask) {
+      if (p.r > 0) {
+        final x = p.x;
+        final y = p.y;
+        activePixels++;
+        if (x < minX) minX = x;
+        if (y < minY) minY = y;
+        if (x > maxX) maxX = x;
+        if (y > maxY) maxY = y;
       }
     }
     if (activePixels == 0) return (0, 'empty');

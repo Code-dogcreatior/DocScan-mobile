@@ -22,21 +22,23 @@ class CameraModeStrip extends StatelessWidget {
     return Column(
       mainAxisSize: MainAxisSize.min,
       children: [
-        // Indicator dot
-        AnimatedBuilder(
-          animation: pageController,
-          builder: (context, _) {
-            return Container(
-              width: 5,
-              height: 5,
-              decoration: const BoxDecoration(
-                shape: BoxShape.circle,
-                color: AppTokens.cameraAccent,
+        // Indicator pill
+        Container(
+          width: 18,
+          height: 3,
+          decoration: BoxDecoration(
+            color: AppTokens.cameraAccent,
+            borderRadius: BorderRadius.circular(2),
+            boxShadow: [
+              BoxShadow(
+                color: AppTokens.cameraAccent.withValues(alpha: 0.6),
+                blurRadius: 6,
+                spreadRadius: 0.4,
               ),
-            );
-          },
+            ],
+          ),
         ),
-        const SizedBox(height: 6),
+        const SizedBox(height: 8),
         SizedBox(
           height: _height,
           child: PageView.builder(

@@ -16,6 +16,7 @@ dependencies:
   path_provider: ^2.1.5
   onnxruntime: ^1.4.1
   http: ^1.2.2
+  http_parser: ^4.0.2
   connectivity_plus: ^6.1.4
   gal: ^2.3.2
   image_picker: ^1.1.2
@@ -23,6 +24,7 @@ dependencies:
   pdf: ^3.11.1
   share_plus: ^10.0.2
   vector_math: ^2.1.4
+  shared_preferences: ^2.3.2
 
 dependency_overrides:
   # flutter_math_fork → flutter_svg 拉到 vector_graphics 1.1.21+，要求 Dart ^3.9 / Flutter 3.35+。

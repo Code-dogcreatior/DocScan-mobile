@@ -17,44 +17,15 @@ class CreatinfMattingException implements Exception {
   String toString() => message;
 }
 
-enum CreatinfMattingModel {
-  /// 最大边 1024，接口仍为高精度端点。
-  general,
-
-  /// 最大边 2304（默认，推荐相机照片）。
-  highPrecision,
-
-  /// 最大边 512，透明物体专用端点。
-  transparentMatting,
-}
-
-extension on CreatinfMattingModel {
-  String get modelTypeParam => switch (this) {
-        CreatinfMattingModel.general => 'general',
-        CreatinfMattingModel.highPrecision => 'high_precision',
-        CreatinfMattingModel.transparentMatting => 'transparent_matting',
-      };
-
-  Uri endpointForBase(String baseUrl) {
-    final trimmed = baseUrl.trim();
-    final noSlash = trimmed.endsWith('/') ? trimmed.substring(0, trimmed.length - 1) : trimmed;
-    final path = this == CreatinfMattingModel.transparentMatting
-        ? '/process_transparent_matting'
-        : '/process_high_precision';
-    return Uri.parse('$noSlash$path');
-  }
-
-  int get maxUploadSide => switch (this) {
-        CreatinfMattingModel.highPrecision => 2304,
-        CreatinfMattingModel.general => 1024,
-        CreatinfMattingModel.transparentMatting => 512,
-      };
-}
-
 class CreatinfMattingService {
   CreatinfMattingService({http.Client? httpClient}) : _client = httpClient ?? http.Client();
 
   final http.Client _client;
+
+  /// 固定高精度端点：最大边 2304，`model_type=high_precision`。
+  static const String _endpointPath = '/process_high_precision';
+  static const String _modelType = 'high_precision';
+  static const int _maxUploadSide = 2304;
 
   static String resolvedBaseUrl({String? override}) {
     if (override != null && override.trim().isNotEmpty) {
@@ -63,11 +34,16 @@ class CreatinfMattingService {
     return AppEnv.mattingApiBase.trim();
   }
 
+  static Uri _buildEndpoint(String baseUrl) {
+    final trimmed = baseUrl.trim();
+    final noSlash = trimmed.endsWith('/') ? trimmed.substring(0, trimmed.length - 1) : trimmed;
+    return Uri.parse('$noSlash$_endpointPath');
+  }
+
   /// 相机 JPEG 字节 → 带透明通道的 PNG。
   Future<Uint8List> processCameraJpeg(
     Uint8List cameraJpegBytes, {
-    CreatinfMattingModel model = CreatinfMattingModel.highPrecision,
-    Duration timeout = const Duration(seconds: 120),
+    Duration timeout = const Duration(seconds: 60),
     String? mattingApiBaseOverride,
   }) async {
     final base = resolvedBaseUrl(override: mattingApiBaseOverride);
@@ -94,11 +70,10 @@ class CreatinfMattingService {
     final origW = baked.width;
     final origH = baked.height;
 
-    final maxSide = model.maxUploadSide;
     final longEdge = origW > origH ? origW : origH;
     img.Image forUpload = baked;
-    if (longEdge > maxSide) {
-      final scale = maxSide / longEdge;
+    if (longEdge > _maxUploadSide) {
+      final scale = _maxUploadSide / longEdge;
       final tw = (origW * scale).round();
       final th = (origH * scale).round();
       forUpload = img.copyResize(
@@ -110,7 +85,7 @@ class CreatinfMattingService {
     }
     final uploadJpg = img.encodeJpg(forUpload, quality: 85);
 
-    final request = http.MultipartRequest('POST', model.endpointForBase(base));
+    final request = http.MultipartRequest('POST', _buildEndpoint(base));
     request.files.add(
       http.MultipartFile.fromBytes(
         'image',
@@ -118,7 +93,7 @@ class CreatinfMattingService {
         filename: 'image.jpg',
       ),
     );
-    request.fields['model_type'] = model.modelTypeParam;
+    request.fields['model_type'] = _modelType;
 
     final streamed = await _client.send(request).timeout(timeout);
     final response = await http.Response.fromStream(streamed);
@@ -153,20 +128,11 @@ class CreatinfMattingService {
               );
 
     final rgba = baked.convert(numChannels: 4, alpha: 255);
-    for (var y = 0; y < origH; y++) {
-      for (var x = 0; x < origW; x++) {
-        final mpx = maskResized.getPixel(x, y);
-        final a = mpx.r.toInt().clamp(0, 255);
-        final p = rgba.getPixel(x, y);
-        rgba.setPixelRgba(
-          x,
-          y,
-          p.r.toInt(),
-          p.g.toInt(),
-          p.b.toInt(),
-          a,
-        );
-      }
+    // 用迭代器一次遍历同步推进两张图的像素，避免逐像素 getPixel/setPixelRgba 的开销。
+    final maskIter = maskResized.iterator;
+    for (final p in rgba) {
+      if (!maskIter.moveNext()) break;
+      p.a = maskIter.current.r;
     }
     return Uint8List.fromList(img.encodePng(rgba));
   }

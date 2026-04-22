@@ -5,7 +5,7 @@
   端侧 ONNX 推理 · 透视矫正 · 可选远程抠图 · 公式识别（联网优先云端 / 离线 ONNX）· 文字识别/翻译/物体识别
 </p>
 
-DocScan Mobile 是一款面向 **iOS / Android** 的 Flutter 应用，聚焦「相机即扫」体验：实时文档框、透视拉正、扫描风格增强，并集成 **AI 抠图**（可对接自建 HTTP 服务）、**LaTeX 公式识别**（可选 [OpenRouter](https://openrouter.ai/) 视觉模型，离线回退 ONNX）与 **文字识别 / 翻译 / 物体识别**（Responses + `json_schema` 结构化输出）。项目以 **可审计的开源实现** 与 **可替换的后端** 为设计目标，适合作为商业产品原型、二次开发底座或学习相机 + ONNX 流水线的参考实现。
+DocScan Mobile 是一款面向 **iOS / Android** 的 Flutter 应用，聚焦「相机即扫」体验：实时文档框、透视拉正、扫描风格增强，并集成 **AI 抠图**（统一走 `high_precision` 高精度端点，可对接自建 HTTP 服务）、**LaTeX 公式识别**（可选 [OpenRouter](https://openrouter.ai/) 视觉模型，离线回退 ONNX）与 **文字识别 / 翻译 / 物体识别**（Responses + `json_schema` 结构化输出）。项目以 **可审计的开源实现** 与 **可替换的后端** 为设计目标，适合作为商业产品原型、二次开发底座或学习相机 + ONNX 流水线的参考实现。
 
 > 愿景：在合规与隐私可控的前提下，持续对齐主流扫描类 App 的核心能力（清晰度、边缘稳定、导出与分享），**不**复制任何第三方品牌或闭源实现。
 
@@ -183,11 +183,10 @@ flutter build ios --dart-define-from-file=env/app.env
 
 | 场景 | 路径 | 表单字段 |
 |------|------|----------|
-| `general` / `high_precision` | `/process_high_precision` | `image`（JPEG）、`model_type` |
-| `transparent_matting` | `/process_transparent_matting` | 同上 |
+| 抠图（`high_precision`） | `/process_high_precision` | `image`（JPEG，最大边 2304）、`model_type=high_precision` |
 | `inpaint` | `/inpaint` | `image`（JPEG）、`mask`（PNG，黑底白笔） |
 
-成功时响应 JSON 含 **`mask`**：PNG 的 Base64（无 `data:` 前缀）；灰度蒙版的 **R 通道** 用作前景 alpha。单测可对 `CreatinfMattingService.processCameraJpeg` 传入 `mattingApiBaseOverride` 指向本地 Mock。
+成功时响应 JSON 含 **`mask`**：PNG 的 Base64（无 `data:` 前缀）；灰度蒙版的 **R 通道** 用作前景 alpha。客户端不再暴露多模型开关，所有抠图与证件照场景统一走高精度端点；单测可对 `CreatinfMattingService.processCameraJpeg` 传入 `mattingApiBaseOverride` 指向本地 Mock。
 
 若历史上曾误提交敏感 URL，除修改当前文件外，请评估 **轮换凭据** 或使用 `git filter-repo` 等工具清理历史（操作前务必备份）。
 
@@ -250,7 +249,7 @@ flutter_reference/            # 可选：Python 脚本、重复模型等参考�
 
 ## 许可证
 
-仓库根目录若尚未包含 `LICENSE` 文件，请在公开分发前 **自行补充** 许可证（例如 MIT、Apache-2.0 等）并更新本段说明。
+本项目采用 **MIT License** 开源，详见仓库根目录的 [`LICENSE`](LICENSE) 文件。你可以自由使用、修改与分发本代码，但须在副本中保留版权声明与许可声明；本软件按「现状」提供，不附带任何明示或默示的担保。
 
 ---
 

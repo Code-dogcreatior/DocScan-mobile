@@ -75,10 +75,7 @@ extension _CameraGalleryHandlers on _CameraScanPageState {
 
   Future<void> _processMattingFromGallery(Uint8List jpegBytes) async {
     _setState(() => _hint = '正在抠图，请稍候...');
-    final png = await _mattingService.processCameraJpeg(
-      jpegBytes,
-      model: CreatinfMattingModel.highPrecision,
-    );
+    final png = await _mattingService.processCameraJpeg(jpegBytes);
     if (!mounted) return;
     await Navigator.of(context).push<void>(
       MaterialPageRoute<void>(

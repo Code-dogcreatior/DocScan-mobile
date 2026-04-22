@@ -29,6 +29,7 @@ import 'feature_unavailable_page.dart';
 import 'id_photo_result_page.dart';
 import 'inpaint_editor_page.dart';
 import 'llm_vision_task_result_page.dart';
+import 'manual_crop_page.dart';
 import 'matting_result_preview_page.dart';
 import 'plain_capture_preview_page.dart';
 import 'style_page.dart';
@@ -60,7 +61,7 @@ class CameraScanPage extends StatefulWidget {
 
 class _CameraScanPageState extends State<CameraScanPage>
     with WidgetsBindingObserver {
-  final OnnxCornerDetector _detector = OnnxCornerDetector();
+  final OnnxCornerDetector _detector = OnnxCornerDetector.instance;
   final CreatinfMattingService _mattingService = CreatinfMattingService();
   final ImagePicker _imagePicker = ImagePicker();
 
@@ -72,7 +73,13 @@ class _CameraScanPageState extends State<CameraScanPage>
   List<CornerPoint> _prevSmoothed = const <CornerPoint>[];
   String _hint = '正在初始化相机...';
   Size _imageSize = Size.zero;
-  int _stableFrames = 0;
+
+  /// 快门按下到进入下一页之间的「冻结叠层」：
+  /// - 按下瞬间先显示半透明黑幕（`_isCapturing=true` 即可），让用户感知画面"停住"；
+  /// - `takePicture` 返回 rawBytes 后升级为真实拍摄帧覆盖层（~100ms 内切换）；
+  /// - `_resumePreviewAfterCapture` 清空，恢复预览。
+  Uint8List? _capturedOverlayBytes;
+
 
   /// 预览双指缩放（光学/数码变焦），与 [CameraController.setZoomLevel] 对应。
   double _zoomMin = 1.0;
@@ -170,7 +177,6 @@ class _CameraScanPageState extends State<CameraScanPage>
       } else {
         _points = [];
         _prevSmoothed = [];
-        _stableFrames = 0;
         _hint = _idleHint();
       }
     });
@@ -283,6 +289,9 @@ class _CameraScanPageState extends State<CameraScanPage>
         _controller = null;
       }
       _isProcessingFrame = false;
+      // 后台/离开时如果恰好处于 capture 流程中，controller 被拆了就再也回不来。
+      // 不复位会导致返回后 _onImage / _syncImageStreamToMode 永久被拦。
+      _isCapturing = false;
     });
   }
 
@@ -361,12 +370,16 @@ class _CameraScanPageState extends State<CameraScanPage>
       if (resetCornerTracking) {
         _points = [];
         _prevSmoothed = [];
-        _stableFrames = 0;
       }
     });
   }
 
   Future<void> _resumePreviewAfterCapture() async {
+    // 关键：无论是否在流，都要强制复位帧处理 flag。之前只在 stream 未启动分支里重置
+    // 状态，导致 isolate 回调因残留 _isProcessingFrame=true 吃掉所有新帧，预览卡死。
+    _isProcessingFrame = false;
+    // 递增 epoch 让 pause 期间 in-flight 的 isolate 回调 early-return，不再 setState。
+    _scanStreamEpoch++;
     try {
       if (_controller != null && !_controller!.value.isStreamingImages) {
         await Future<void>.delayed(const Duration(milliseconds: 30));
@@ -377,24 +390,35 @@ class _CameraScanPageState extends State<CameraScanPage>
         if (_mode.isScan) {
           await _controller!.startImageStream(_onImage);
         }
-        if (mounted) {
-          setState(() {
-            _points = [];
-            _prevSmoothed = [];
-            _stableFrames = 0;
-            _hint = _idleHint();
-          });
-        }
+      }
+      if (mounted) {
+        setState(() {
+          _points = [];
+          _prevSmoothed = [];
+          _isProcessingFrame = false;
+          _isCapturing = false;
+          _capturedOverlayBytes = null;
+          _hint = _idleHint();
+        });
       }
     } catch (e) {
       if (mounted) {
-        setState(() => _hint = '预览恢复失败: $e');
+        setState(() {
+          _isProcessingFrame = false;
+          _isCapturing = false;
+          _capturedOverlayBytes = null;
+          _hint = '预览恢复失败: $e';
+        });
       }
     }
   }
 
-  /// 停止分析流并暂停预览，避免主线程长时间推理或结果页盖住相机时 Android ImageReader 缓冲耗尽。
+  /// 停止角点分析流，给后续拍照或跳转结果页让路。
+  /// 不调用 pausePreview()：部分 Android 设备 pausePreview 后无法可靠恢复，
+  /// 而停止 ImageStream 已足够阻止 ImageReader 缓冲溢出，预览 Surface 继续展示最后一帧。
   Future<void> _pauseCameraPipeline() async {
+    // bump epoch：让仍在 isolate 中推理的帧回调 early-return，不再 setState。
+    _scanStreamEpoch++;
     final c = _controller;
     if (c == null || !c.value.isInitialized) return;
     try {
@@ -402,21 +426,18 @@ class _CameraScanPageState extends State<CameraScanPage>
         await c.stopImageStream();
         await Future<void>.delayed(const Duration(milliseconds: 50));
       }
-      if (c.value.isPreviewPaused) return;
-      await c.pausePreview();
     } catch (e) {
       debugPrint('[CameraScan] pauseCameraPipeline: $e');
     }
   }
 
-  /// 恢复预览并按模式决定是否重启角点分析流。
+  /// 恢复角点分析流。与 [_pauseCameraPipeline] 配套使用。
   Future<void> _resumeCameraPipeline() async {
     final c = _controller;
-    if (c == null || !c.value.isInitialized) return;
-    try {
-      await c.resumePreview();
-    } catch (e) {
-      debugPrint('[CameraScan] resumeCameraPipeline: $e');
+    if (c == null || !c.value.isInitialized) {
+      // controller 已被 teardown（后台切换），直接重绑。
+      await _rebindCameraIfNeeded();
+      return;
     }
     await _resumePreviewAfterCapture();
   }
@@ -482,12 +503,10 @@ class _CameraScanPageState extends State<CameraScanPage>
           final next = result.points;
           _points = _smoothFour(_prevSmoothed, next);
           _prevSmoothed = List<CornerPoint>.from(_points);
-          _stableFrames++;
           _hint = '已识别文档边缘 (${result.inferenceMs ?? 0}ms)';
         } else {
           _points = [];
           _prevSmoothed = [];
-          _stableFrames = 0;
           _hint =
               result.message ?? 'Failed to get 4 corners from current frame';
         }
@@ -605,6 +624,29 @@ class _CameraScanPageState extends State<CameraScanPage>
     final w = viewportMaxWidth.clamp(0.0, double.infinity);
     final h = ar > 0 ? w / ar : viewportMaxHeight;
 
+    // 冻结叠层：按下快门到返回前，先用半透明黑幕立即压住预览；拍摄帧就绪后切换为真实静帧。
+    Widget withFreezeOverlay(Widget child) {
+      if (!_isCapturing && _capturedOverlayBytes == null) return child;
+      return Stack(
+        fit: StackFit.expand,
+        children: [
+          child,
+          if (_capturedOverlayBytes != null)
+            Positioned.fill(
+              child: Image.memory(
+                _capturedOverlayBytes!,
+                fit: BoxFit.cover,
+                gaplessPlayback: true,
+              ),
+            )
+          else
+            Positioned.fill(
+              child: ColoredBox(color: Colors.black.withValues(alpha: 0.45)),
+            ),
+        ],
+      );
+    }
+
     return _wrapPreviewWithPinchZoom(
       controller,
       SizedBox(
@@ -616,7 +658,7 @@ class _CameraScanPageState extends State<CameraScanPage>
             child: SizedBox(
               width: w,
               height: h,
-              child: previewCore,
+              child: withFreezeOverlay(previewCore),
             ),
           ),
         ),
@@ -630,19 +672,27 @@ class _CameraScanPageState extends State<CameraScanPage>
         _isCapturing) {
       return;
     }
-    setState(() => _isCapturing = true);
+    setState(() {
+      _isCapturing = true;
+      _capturedOverlayBytes = null;
+      _hint = '正在处理高清图像...';
+    });
     final t0 = DateTime.now();
     try {
-      // 停止预览流以释放 ImageReader 缓冲，防止 takePicture 时 OOM
+      // 停止预览流以释放 ImageReader 缓冲，防止 takePicture 时 OOM。
+      // epoch 递增已让 in-flight isolate 回调 early-return，不再需要 30ms 兜底延迟。
       if (_controller!.value.isStreamingImages) {
+        _scanStreamEpoch++;
         await _controller!.stopImageStream();
-        await Future<void>.delayed(const Duration(milliseconds: 30));
       }
       if (!mounted) return;
-      setState(() => _hint = '正在处理高清图像...');
 
       final shot = await _controller!.takePicture();
       final rawBytes = await File(shot.path).readAsBytes();
+      if (mounted && rawBytes.isNotEmpty) {
+        // 用刚拍摄的帧覆盖 dim mask，用户看到画面"真正静止"而非一直黑幕。
+        setState(() => _capturedOverlayBytes = rawBytes);
+      }
       
       final afterShot = DateTime.now();
       if (kDebugMode) {
@@ -741,12 +791,45 @@ class _CameraScanPageState extends State<CameraScanPage>
       );
 
       if (!detect.hasFourCorners) {
-        await _resumePreviewAfterCapture();
+        // 检测失败时不再直接丢弃拍摄结果，而是把原图丢进手动裁剪页让用户拖四角。
+        await _pauseCameraPipeline();
+        final bakedJpeg = await compute(_encodeJpegTask, baked);
+        if (!mounted) return;
+        final manual = await Navigator.of(context).push<Uint8List?>(
+          MaterialPageRoute<Uint8List?>(
+            builder: (_) => ManualCropPage(
+              imageBytes: bakedJpeg,
+              initialCorners:
+                  _prevSmoothed.length == 4 ? _prevSmoothed : null,
+            ),
+          ),
+        );
+        if (!mounted) return;
+        if (manual == null || manual.isEmpty) {
+          await _resumeCameraPipeline();
+          if (mounted) {
+            setState(() {
+              _hint = '已取消手动裁剪';
+              _isCapturing = false;
+            });
+          }
+          return;
+        }
+        if (widget.returnScanResult && _mode.isScan) {
+          Navigator.of(context).pop<Uint8List>(manual);
+          return;
+        }
+        try {
+          await Navigator.of(context).push(
+            MaterialPageRoute<void>(
+              builder: (_) => StylePage(croppedBytes: manual),
+            ),
+          );
+        } finally {
+          await _resumeCameraPipeline();
+        }
         if (mounted) {
-          setState(() {
-            _hint = '拍照后未检测到四边形，请重试';
-            _isCapturing = false;
-          });
+          setState(() => _isCapturing = false);
         }
         return;
       }
@@ -842,10 +925,7 @@ class _CameraScanPageState extends State<CameraScanPage>
       try {
         if (!mounted) return;
         setState(() => _hint = '正在抠图，请稍候...');
-        final png = await _mattingService.processCameraJpeg(
-          rawBytes,
-          model: CreatinfMattingModel.highPrecision,
-        );
+        final png = await _mattingService.processCameraJpeg(rawBytes);
 
         if (!mounted) return;
         await Navigator.of(context).push<void>(
@@ -949,10 +1029,7 @@ class _CameraScanPageState extends State<CameraScanPage>
       try {
         if (!mounted) return;
         setState(() => _hint = '正在抠图，请稍候...');
-        final png = await _mattingService.processCameraJpeg(
-          rawBytes,
-          model: CreatinfMattingModel.highPrecision,
-        );
+        final png = await _mattingService.processCameraJpeg(rawBytes);
 
         if (!mounted) return;
         await Navigator.of(context).push<void>(
@@ -1168,13 +1245,14 @@ class _CameraScanPageState extends State<CameraScanPage>
     _modePageController.dispose();
     _mattingService.close();
     _controller?.dispose();
-    _detector.dispose();
+    // _detector 是进程级 singleton，不在页面 dispose 时释放。
     super.dispose();
   }
 
   bool get _shutterEnabled {
     if (_isCapturing) return false;
-    if (_mode.isScan) return _stableFrames >= 2;
+    // 扫描模式：无论是否检测到四角都允许拍照。
+    // 检测到四角 → 自动透视裁剪；未检测到 → 进入 ManualCropPage 手动调整。
     return true;
   }
 
